@@ -46,8 +46,8 @@
   --color-yellow-dim: var(--yellow-dim);
   --color-blue: var(--blue);
   --color-blue-dim: var(--blue-dim);
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Manrope", serif;
+  --font-mono: "Manrope", serif;
 }
 
 body {
