@@ -1,5 +1,3 @@
-"use client";
-
 import type { DurationSizeBucket } from "@/lib/dashboard/analytics-transforms";
 
 export function SizeReport({ data }: { data: DurationSizeBucket[] }) {

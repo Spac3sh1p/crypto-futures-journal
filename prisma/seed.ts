@@ -5,7 +5,7 @@ import path from "path";
 
 const dbPath = path.resolve(__dirname, "../dev.db");
 const adapter = new PrismaBetterSqlite3({ url: dbPath });
-const prisma = new PrismaClient({ adapter } as any);
+const prisma = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
 
 const SYMBOLS = [
   { symbol: "BTCUSDT", baseCoin: "BTC" },

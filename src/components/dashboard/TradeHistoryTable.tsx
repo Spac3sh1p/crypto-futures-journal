@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { TradeDetailPanel } from "./TradeDetailPanel";
+import { formatDuration, sanitizeCsvField } from "@/lib/formatters";
 
 interface SerializedTrade {
   id: string;
@@ -22,15 +23,6 @@ interface SerializedTrade {
 }
 
 const PAGE_SIZE = 20;
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -66,7 +58,7 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
       t.tags || "",
       t.notes || "",
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${sanitizeCsvField(String(c)).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

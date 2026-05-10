@@ -8,15 +8,12 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   ReferenceLine,
-  ReferenceArea,
   ReferenceDot,
 } from "recharts";
 
 interface MiniKlineChartProps {
   entryPrice: number;
   exitPrice: number;
-  entryTime: string;
-  exitTime: string;
   side: string;
 }
 
@@ -36,18 +33,13 @@ function generateMockPriceData(entryPrice: number, exitPrice: number, points: nu
   return data;
 }
 
-export function MiniKlineChart({ entryPrice, exitPrice, entryTime, exitTime, side }: MiniKlineChartProps) {
+export function MiniKlineChart({ entryPrice, exitPrice, side }: MiniKlineChartProps) {
   const data = generateMockPriceData(entryPrice, exitPrice, 60);
   const prices = data.map((d) => d.price);
   const maePrice = side === "Long" ? Math.min(...prices) : Math.max(...prices);
   const mfePrice = side === "Long" ? Math.max(...prices) : Math.min(...prices);
   const minY = Math.min(...prices) * 0.999;
   const maxY = Math.max(...prices) * 1.001;
-
-  const entryDate = new Date(entryTime);
-  const exitDate = new Date(exitTime);
-  const formatTime = (d: Date) =>
-    d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 
   return (
     <div className="relative">

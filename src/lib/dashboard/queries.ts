@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { Trade } from "@/generated/prisma/client";
+import { Trade, Prisma } from "@/generated/prisma/client";
 import { subDays, startOfDay, endOfDay } from "date-fns";
+import { type TradeRange } from "@/lib/formatters";
 
 export async function getTradesInRange(
-  range: "7d" | "30d" | "90d" | "all",
+  range: TradeRange,
   exchangeId?: string
 ): Promise<Trade[]> {
   const now = new Date();
@@ -24,12 +25,10 @@ export async function getTradesInRange(
       break;
   }
 
-  const where: any = {};
+  const where: Prisma.TradeWhereInput = {};
 
   if (startDate) {
-    where.exitTime = {
-      gte: startDate,
-    };
+    where.exitTime = { gte: startDate };
   }
 
   if (exchangeId) {
@@ -38,9 +37,7 @@ export async function getTradesInRange(
 
   return prisma.trade.findMany({
     where,
-    orderBy: {
-      exitTime: "desc",
-    },
+    orderBy: { exitTime: "desc" },
   });
 }
 
@@ -52,21 +49,17 @@ export async function getExchanges() {
       label: true,
       isActive: true,
     },
-    orderBy: {
-      name: "asc",
-    },
+    orderBy: { name: "asc" },
   });
 }
 
 export async function getTodayPnl(exchangeId?: string): Promise<number> {
   const today = new Date();
-  const startOfToday = startOfDay(today);
-  const endOfToday = endOfDay(today);
 
-  const where: any = {
+  const where: Prisma.TradeWhereInput = {
     exitTime: {
-      gte: startOfToday,
-      lte: endOfToday,
+      gte: startOfDay(today),
+      lte: endOfDay(today),
     },
   };
 
@@ -76,9 +69,7 @@ export async function getTodayPnl(exchangeId?: string): Promise<number> {
 
   const result = await prisma.trade.aggregate({
     where,
-    _sum: {
-      realizedPnl: true,
-    },
+    _sum: { realizedPnl: true },
   });
 
   return result._sum.realizedPnl ?? 0;

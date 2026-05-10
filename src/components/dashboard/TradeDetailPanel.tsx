@@ -20,15 +20,6 @@ interface TradeDetail {
   notes: string | null;
 }
 
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
-  if (mins > 0) return `${mins}m ${secs}s`;
-  return `${secs}s`;
-}
-
 export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
   const [activeTab, setActiveTab] = useState<"chart" | "fills" | "notes">("chart");
 
@@ -69,8 +60,6 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
             <MiniKlineChart
               entryPrice={trade.entryPrice}
               exitPrice={trade.exitPrice}
-              entryTime={trade.entryTime}
-              exitTime={trade.exitTime}
               side={trade.side}
             />
           </div>

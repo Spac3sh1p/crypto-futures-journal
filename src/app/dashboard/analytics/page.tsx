@@ -1,3 +1,4 @@
+import { parseRange } from "@/lib/formatters";
 import { getTradesInRange } from "@/lib/dashboard/queries";
 import { calculateMetrics } from "@/lib/analysis";
 import {
@@ -29,7 +30,7 @@ interface PageProps {
 
 export default async function AnalyticsPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const range = (params.range || "30d") as "7d" | "30d" | "90d" | "all";
+  const range = parseRange(params.range);
   const exchangeId = params.exchangeId;
 
   const trades = await getTradesInRange(range, exchangeId);

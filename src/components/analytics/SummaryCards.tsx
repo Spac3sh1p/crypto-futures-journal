@@ -1,4 +1,4 @@
-"use client";
+import { formatDuration } from "@/lib/formatters";
 
 interface SummaryCardsProps {
   totalTrades: number;
@@ -8,13 +8,6 @@ interface SummaryCardsProps {
   lossCount: number;
   longCount: number;
   shortCount: number;
-}
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${h}h ${m}m ${s}s`;
 }
 
 export function SummaryCards({

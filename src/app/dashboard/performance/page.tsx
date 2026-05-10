@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { parseRange } from "@/lib/formatters";
 import { getTradesInRange, getTodayPnl } from "@/lib/dashboard/queries";
 import {
   buildCumulativePnlSeries,
@@ -16,7 +17,7 @@ interface PageProps {
 
 export default async function PerformancePage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const range = (params.range || "30d") as "7d" | "30d" | "90d" | "all";
+  const range = parseRange(params.range);
   const exchangeId = params.exchangeId;
 
   const trades = await getTradesInRange(range, exchangeId);
