@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Exchange API credentials (encrypted key stored, never exposed to client)
+model Exchange {
+  id        String   @id @default(cuid())
+  name      String   // "bybit" | "binance"
+  apiKey    String
+  apiSecret String
+  label     String?  // user-defined label like "Main Account"
+  isActive  Boolean  @default(true)
+  lastSync  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  trades    Trade[]
+}
+
+// Core trade record - one row per closed position
+model Trade {
+  id              String   @id @default(cuid())
+  exchangeId      String
+  exchange        Exchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+
+  // Identification
+  externalId      String   @unique // exchange-side trade/order ID for dedup
+  symbol          String   // "BTCUSDT"
+  baseCoin        String   // "BTC"
+  quoteCoin       String   // "USDT"
+
+  // Position details
+  side            String   // "Long" | "Short"
+  leverage        Float
+  marginMode      String   // "cross" | "isolated"
+
+  // Entry
+  entryPrice      Float
+  entryQty        Float
+  entryValue      Float    // entryPrice * entryQty
+  entryTime       DateTime
+
+  // Exit
+  exitPrice       Float
+  exitQty         Float
+  exitValue       Float
+  exitTime        DateTime
+
+  // PnL
+  realizedPnl     Float    // net PnL after fees
+  fee             Float    // total fees paid
+  fundingFee      Float    @default(0) // accumulated funding fees
+
+  // Computed metrics (stored for query performance)
+  pnlPercent      Float    // PnL as % of margin
+  holdDuration    Int      // seconds held
+  isWin           Boolean  // realizedPnl > 0
+
+  // Optional user annotations
+  tags            String?  // comma-separated tags
+  notes           String?
+  rating          Int?     // 1-5 self-rating
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([exchangeId])
+  @@index([symbol])
+  @@index([side])
+  @@index([entryTime])
+  @@index([exitTime])
+  @@index([isWin])
+  @@index([baseCoin])
+}
+
+// Daily performance snapshot for fast dashboard queries
+model DailyStats {
+  id            String   @id @default(cuid())
+  date          DateTime @unique // date only, no time
+  totalPnl      Float
+  tradeCount    Int
+  winCount      Int
+  lossCount     Int
+  winRate       Float
+  profitFactor  Float    // gross profit / gross loss
+  avgWin        Float
+  avgLoss       Float
+  maxWin        Float
+  maxLoss       Float
+  volume        Float    // total traded volume
+  fees          Float
+  createdAt     DateTime @default(now())
+
+  @@index([date])
+}
+
+// Sync log to track import history
+model SyncLog {
+  id          String   @id @default(cuid())
+  exchangeId  String
+  status      String   // "success" | "error" | "partial"
+  tradesAdded Int      @default(0)
+  message     String?
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+}
