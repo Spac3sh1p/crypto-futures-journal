@@ -24,6 +24,8 @@ export function makeTrade(overrides: Partial<Trade> = {}): Trade {
     exitTime: new Date("2024-01-15T12:00:00Z"),
     realizedPnl: 100,
     fee: 5,
+    makerFee: 0,
+    takerFee: 5,
     fundingFee: 0,
     pnlPercent: 2,
     holdDuration: 7200,

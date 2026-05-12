@@ -23,19 +23,9 @@ export function FundingFeesPanel({ funding, fees }: { funding: FundingReport; fe
               <td className="py-2 text-right font-mono text-red">-${funding.paid.toFixed(2)}</td>
             </tr>
             <tr>
-              <td className="py-2 text-text-primary">Net Funding</td>
-              <td className="py-2 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <div className="w-24 h-2 rounded-full bg-[#2b3139] overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${funding.net >= 0 ? "bg-green" : "bg-red"}`}
-                      style={{ width: `${Math.min(Math.abs(funding.net) / (funding.received + funding.paid + 1) * 100, 100)}%` }}
-                    />
-                  </div>
-                  <span className={`font-mono ${funding.net >= 0 ? "text-green" : "text-red"}`}>
-                    {funding.net >= 0 ? "+" : "-"}${Math.abs(funding.net).toFixed(2)}
-                  </span>
-                </div>
+              <td className="py-2 text-text-primary font-medium">Net Funding</td>
+              <td className={`py-2 text-right font-mono ${funding.net >= 0 ? "text-green" : "text-red"}`}>
+                {funding.net >= 0 ? "+" : "-"}${Math.abs(funding.net).toFixed(2)}
               </td>
             </tr>
           </tbody>
@@ -54,22 +44,17 @@ export function FundingFeesPanel({ funding, fees }: { funding: FundingReport; fe
           </thead>
           <tbody>
             <tr className="border-b border-border-light">
-              <td className="py-2 text-green">Maker Rebates Received</td>
-              <td className="py-2 text-right font-mono text-green">${fees.makerRebates.toFixed(2)}</td>
-            </tr>
-            <tr className="border-b border-border-light">
-              <td className="py-2 text-red">Market Fees Paid</td>
+              <td className="py-2 text-red">Taker Fees</td>
               <td className="py-2 text-right font-mono text-red">-${fees.marketFeesPaid.toFixed(2)}</td>
             </tr>
+            <tr className="border-b border-border-light">
+              <td className="py-2 text-green">Maker Fees</td>
+              <td className="py-2 text-right font-mono text-green">${fees.makerRebates.toFixed(2)}</td>
+            </tr>
             <tr>
-              <td className="py-2 text-text-primary">Net Fees</td>
-              <td className="py-2 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <div className="w-24 h-2 rounded-full bg-[#2b3139] overflow-hidden">
-                    <div className="h-full rounded-full bg-red" style={{ width: "100%" }} />
-                  </div>
-                  <span className="font-mono text-red">-${Math.abs(fees.net).toFixed(2)}</span>
-                </div>
+              <td className="py-2 text-text-primary font-medium">Net Fees</td>
+              <td className={`py-2 text-right font-mono ${fees.net >= 0 ? "text-green" : "text-red"}`}>
+                {fees.net >= 0 ? "+" : "-"}${Math.abs(fees.net).toFixed(2)}
               </td>
             </tr>
           </tbody>

@@ -22,15 +22,15 @@ export function TopBar() {
 
   return (
     <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-bg-secondary">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {ranges.map((r) => (
           <button
             key={r.id}
             onClick={() => handleRangeChange(r.id)}
-            className={`px-3.5 py-1.5 rounded text-xs font-semibold transition-colors ${
+            className={`px-4 py-1.5 rounded-lg text-[11px] font-bold tracking-wider transition-all duration-200 font-display ${
               activeRange === r.id
-                ? "bg-yellow text-bg-primary"
-                : "bg-bg-tertiary text-text-secondary hover:text-text-primary"
+                ? "bg-gradient-to-r from-yellow to-[#FBBF24] text-bg-primary shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                : "bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-yellow/30 border border-transparent"
             }`}
           >
             {r.label}

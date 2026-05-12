@@ -21,33 +21,33 @@ export function SummaryCards({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Total Trades */}
-      <div className="bg-bg-secondary rounded-lg p-5 border border-border">
-        <span className="text-xs text-text-muted">Total Trades</span>
+      <div className="bg-bg-secondary rounded-[10px] p-5 border border-border border-t-2 border-t-yellow">
+        <span className="text-[10px] font-bold text-text-muted uppercase tracking-[0.15em] font-display">Total Trades</span>
         <p className="text-2xl font-bold font-mono text-text-primary mt-1">{totalTrades}</p>
       </div>
 
       {/* Avg Hold */}
-      <div className="bg-bg-secondary rounded-lg p-5 border border-border">
-        <span className="text-xs text-text-muted">Avg Hold</span>
+      <div className="bg-bg-secondary rounded-[10px] p-5 border border-border border-t-2 border-t-yellow">
+        <span className="text-[10px] font-bold text-text-muted uppercase tracking-[0.15em] font-display">Avg Hold</span>
         <p className="text-2xl font-bold font-mono text-text-primary mt-1">{formatDuration(avgHold)}</p>
       </div>
 
       {/* Win Rate Donut */}
-      <div className="bg-bg-secondary rounded-lg p-5 border border-border">
-        <span className="text-xs text-text-muted">Win Rate</span>
+      <div className="bg-bg-secondary rounded-[10px] p-5 border border-border border-t-2 border-t-purple">
+        <span className="text-[10px] font-bold text-text-muted uppercase tracking-[0.15em] font-display">Win Rate</span>
         <div className="flex items-center gap-3 mt-1">
           <div className="relative">
             <svg width="80" height="80" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="36" fill="none" stroke="#2b3139" strokeWidth="6" />
+              <circle cx="40" cy="40" r="36" fill="none" stroke="#334155" strokeWidth="6" />
               <circle
                 cx="40" cy="40" r="36" fill="none"
-                stroke="#0ecb81" strokeWidth="6"
+                stroke="#10B981" strokeWidth="6"
                 strokeDasharray={`${winArc} ${circumference}`}
                 strokeLinecap="round"
                 transform="rotate(-90 40 40)"
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-text-primary">
+            <span className="absolute inset-0 flex items-center justify-center text-sm font-bold font-mono text-text-primary">
               {winRate.toFixed(0)}%
             </span>
           </div>
@@ -55,10 +55,6 @@ export function SummaryCards({
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-green" />
               <span>{winCount}W</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-[#5e6673]" />
-              <span>0be</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-red" />
@@ -69,8 +65,8 @@ export function SummaryCards({
       </div>
 
       {/* Long / Short Ratio */}
-      <div className="bg-bg-secondary rounded-lg p-5 border border-border">
-        <span className="text-xs text-text-muted">Long / Short Ratio</span>
+      <div className="bg-bg-secondary rounded-[10px] p-5 border border-border border-t-2 border-t-purple">
+        <span className="text-[10px] font-bold text-text-muted uppercase tracking-[0.15em] font-display">Long / Short Ratio</span>
         <div className="mt-3">
           <div className="h-4 w-full rounded-full overflow-hidden relative">
             <div className="absolute inset-0 bg-red" />

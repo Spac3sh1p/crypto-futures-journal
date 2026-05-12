@@ -265,6 +265,8 @@ export function buildFundingReport(trades: Trade[]): FundingReport {
 }
 
 export function buildFeesReport(trades: Trade[]): FeesReport {
-  const totalFees = trades.reduce((s, t) => s + t.fee, 0);
-  return { makerRebates: 0, marketFeesPaid: totalFees, net: -totalFees };
+  const makerRebates = trades.reduce((s, t) => s + t.makerFee, 0);
+  const marketFeesPaid = trades.reduce((s, t) => s + t.takerFee, 0);
+  const net = makerRebates - marketFeesPaid;
+  return { makerRebates, marketFeesPaid, net };
 }

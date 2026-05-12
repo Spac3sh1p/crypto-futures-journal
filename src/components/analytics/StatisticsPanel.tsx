@@ -23,14 +23,14 @@ export function StatisticsPanel({ stats }: { stats: Statistics }) {
   ];
 
   return (
-    <div className="bg-bg-secondary rounded-lg border border-border p-6">
-      <h3 className="text-base font-semibold text-text-primary mb-5">Statistics</h3>
+    <div className="bg-bg-secondary rounded-[14px] border border-border p-6">
+      <h3 className="text-[10px] font-bold text-yellow uppercase tracking-[0.2em] font-display mb-5">Statistics</h3>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12">
         <div>
           {leftRows.map((r) => (
             <div key={r.label} className="flex justify-between items-center py-3 border-b border-border-light last:border-b-0">
               <span className="text-sm text-text-muted">{r.label}</span>
-              <span className={`text-sm font-medium ${r.color}`}>{r.value}</span>
+              <span className={`text-sm font-mono font-medium ${r.color}`}>{r.value}</span>
             </div>
           ))}
         </div>
@@ -38,7 +38,7 @@ export function StatisticsPanel({ stats }: { stats: Statistics }) {
           {rightRows.map((r) => (
             <div key={r.label} className="flex justify-between items-center py-3 border-b border-border-light last:border-b-0">
               <span className="text-sm text-text-muted">{r.label}</span>
-              <span className={`text-sm font-medium ${r.color}`}>{r.value}</span>
+              <span className={`text-sm font-mono font-medium ${r.color}`}>{r.value}</span>
             </div>
           ))}
         </div>

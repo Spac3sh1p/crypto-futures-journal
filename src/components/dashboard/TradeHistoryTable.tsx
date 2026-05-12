@@ -85,14 +85,14 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
   };
 
   return (
-    <div className="bg-bg-secondary rounded-lg border border-border">
+    <div className="bg-bg-secondary rounded-[14px] border border-border">
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+        <h3 className="text-[10px] font-bold text-yellow uppercase tracking-[0.2em] font-display">
           Trade History
         </h3>
         <button
           onClick={downloadCsv}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary border border-border hover:border-text-muted rounded transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary hover:text-yellow border border-border hover:border-yellow/40 rounded-lg transition-all duration-200"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="opacity-70">
             <path d="M6 1v7M6 8L3.5 5.5M6 8l2.5-2.5M2 10h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -105,12 +105,12 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              <th className="px-5 py-3 text-left text-xs font-semibold text-text-muted tracking-wider">Symbol/Size</th>
-              <th className="px-5 py-3 text-center text-xs font-semibold text-text-muted tracking-wider">Open</th>
-              <th className="px-5 py-3 text-center text-xs font-semibold text-text-muted tracking-wider">Hold Time</th>
-              <th className="px-5 py-3 text-center text-xs font-semibold text-text-muted tracking-wider">Close</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-text-muted tracking-wider">Fee</th>
-              <th className="px-5 py-3 text-right text-xs font-semibold text-text-muted tracking-wider">Realised PNL</th>
+              <th className="px-5 py-3 text-left text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Symbol/Size</th>
+              <th className="px-5 py-3 text-center text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Open</th>
+              <th className="px-5 py-3 text-center text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Hold Time</th>
+              <th className="px-5 py-3 text-center text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Close</th>
+              <th className="px-5 py-3 text-right text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Fee</th>
+              <th className="px-5 py-3 text-right text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Realised PNL</th>
             </tr>
           </thead>
           <tbody>
@@ -118,7 +118,7 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
               <React.Fragment key={trade.id}>
                 <tr
                   onClick={() => setExpandedId(expandedId === trade.id ? null : trade.id)}
-                  className={`border-b border-border-light hover:bg-bg-hover transition-colors cursor-pointer ${
+                  className={`border-b border-border-light hover:bg-yellow-dim transition-all duration-150 cursor-pointer ${
                     expandedId === trade.id ? "bg-bg-hover" : ""
                   }`}
                 >

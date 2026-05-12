@@ -22,6 +22,9 @@ export async function fetchBinanceTrades(
     const symbol = trade.symbol?.replace("/", "").replace(":USDT", "") || "";
     const baseCoin = symbol.replace("USDT", "");
 
+    const feeCost = trade.fee?.cost || 0;
+    const isMaker = trade.takerOrMaker === "maker";
+
     trades.push({
       externalId: trade.id || `binance_${trade.timestamp}`,
       symbol,
@@ -39,7 +42,9 @@ export async function fetchBinanceTrades(
       exitValue: (trade.price || 0) * (trade.amount || 0),
       exitTime: new Date(trade.timestamp || Date.now()),
       realizedPnl: (trade.info as Record<string, unknown>)?.realizedPnl as number || 0,
-      fee: trade.fee?.cost || 0,
+      fee: feeCost,
+      makerFee: isMaker ? feeCost : 0,
+      takerFee: isMaker ? 0 : feeCost,
       fundingFee: 0,
     });
   }

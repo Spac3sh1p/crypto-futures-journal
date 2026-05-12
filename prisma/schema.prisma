@@ -52,7 +52,9 @@ model Trade {
 
   // PnL
   realizedPnl     Float    // net PnL after fees
-  fee             Float    // total fees paid
+  fee             Float    // total fees paid (makerFee + takerFee)
+  makerFee        Float    @default(0) // maker rebates (usually negative = rebate)
+  takerFee        Float    @default(0) // taker fees paid
   fundingFee      Float    @default(0) // accumulated funding fees
 
   // Computed metrics (stored for query performance)

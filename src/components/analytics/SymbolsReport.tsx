@@ -3,8 +3,7 @@ import type { SymbolReport } from "@/lib/dashboard/analytics-transforms";
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${h}h ${m}m ${s}s`;
+  return `${h}h ${m}m`;
 }
 
 export function SymbolsReport({ data }: { data: SymbolReport[] }) {
@@ -47,7 +46,7 @@ export function SymbolsReport({ data }: { data: SymbolReport[] }) {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                  <span className={`inline-block px-3 py-1.5 rounded-full text-sm font-mono font-medium ${
                     row.avgDuration > 14400 ? "bg-green/20 text-green" : row.avgDuration > 3600 ? "bg-yellow/20 text-yellow" : "bg-red/20 text-red"
                   }`}>
                     {formatDuration(row.avgDuration)}

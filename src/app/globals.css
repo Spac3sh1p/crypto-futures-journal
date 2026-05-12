@@ -1,26 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  /* Pro Trading Dark Theme - inspired by Binance/CoinMarketMan */
-  --bg-primary: #0b0e11;
-  --bg-secondary: #1b1f27;
-  --bg-tertiary: #151920;
-  --bg-hover: #242a33;
-  --border: #2b3139;
-  --border-light: #1e2329;
+  /* Cyberpunk Fintech Theme — deep navy + gold trust + tech purple */
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-tertiary: #162032;
+  --bg-hover: #263449;
+  --border: #334155;
+  --border-light: #1E293B;
 
-  --text-primary: #eaecef;
-  --text-secondary: #848e9c;
-  --text-muted: #5e6673;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
 
-  --green: #0ecb81;
-  --green-dim: rgba(14, 203, 129, 0.12);
-  --red: #f6465d;
-  --red-dim: rgba(246, 70, 93, 0.12);
-  --yellow: #f0b90b;
-  --yellow-dim: rgba(240, 185, 11, 0.12);
-  --blue: #1e90ff;
-  --blue-dim: rgba(30, 144, 255, 0.12);
+  --green: #10B981;
+  --green-dim: rgba(16, 185, 129, 0.12);
+  --red: #EF4444;
+  --red-dim: rgba(239, 68, 68, 0.12);
+  --yellow: #F59E0B;
+  --yellow-dim: rgba(245, 158, 11, 0.12);
+  --blue: #3B82F6;
+  --blue-dim: rgba(59, 130, 246, 0.12);
+  --purple: #8B5CF6;
+  --purple-dim: rgba(139, 92, 246, 0.12);
 
   --background: var(--bg-primary);
   --foreground: var(--text-primary);
@@ -46,8 +48,11 @@
   --color-yellow-dim: var(--yellow-dim);
   --color-blue: var(--blue);
   --color-blue-dim: var(--blue-dim);
-  --font-sans: "Manrope", serif;
-  --font-mono: "Manrope", serif;
+  --color-purple: var(--purple);
+  --color-purple-dim: var(--purple-dim);
+  --font-sans: "Exo 2", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-display: "Orbitron", sans-serif;
 }
 
 body {
@@ -56,6 +61,22 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility classes for Cyberpunk Fintech theme */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Card gold top accent */
+.card-accent {
+  border-top: 2px solid var(--yellow);
+}
+
+/* Glow hover effect for interactive rows */
+.row-glow:hover {
+  background: rgba(245, 158, 11, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.08);
 }
 
 /* Scrollbar styling */

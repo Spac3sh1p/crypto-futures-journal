@@ -1,7 +1,7 @@
 export interface ExchangeCredentials {
   apiKey: string;
   apiSecret: string;
-  exchange: "bybit" | "binance";
+  exchange: "bybit" | "binance" | "hyperliquid";
 }
 
 export interface RawTrade {
@@ -22,6 +22,8 @@ export interface RawTrade {
   exitTime: Date;
   realizedPnl: number;
   fee: number;
+  makerFee: number;
+  takerFee: number;
   fundingFee: number;
 }
 

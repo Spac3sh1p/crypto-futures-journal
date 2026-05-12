@@ -1,11 +1,23 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import { Exo_2, JetBrains_Mono, Orbitron } from "next/font/google";
 import "./globals.css";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const exo2 = Exo_2({
+  variable: "--font-exo2",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const orbitron = Orbitron({
+  variable: "--font-orbitron",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "900"],
 });
 
 export const metadata: Metadata = {
@@ -19,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${manrope.variable} h-full`}>
+    <html lang="en" className={`${exo2.variable} ${jetbrainsMono.variable} ${orbitron.variable} h-full`}>
       <body className="h-full bg-bg-primary text-text-primary font-sans antialiased">
         {children}
       </body>

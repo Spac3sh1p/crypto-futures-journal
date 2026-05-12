@@ -18,8 +18,11 @@ export function TradeResultByDayChart({ data }: { data: DayTimeBar[] }) {
           <XAxis dataKey="label" tick={{ fill: "#5e6673", fontSize: 11 }} axisLine={{ stroke: "#2b3139" }} tickLine={false} />
           <YAxis tick={{ fill: "#5e6673", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
           <Tooltip
-            contentStyle={{ background: "#1b1f27", border: "1px solid #2b3139", borderRadius: 8, fontSize: 12 }}
+            contentStyle={{ background: "#1E293B", border: "1px solid #334155", borderRadius: 10, fontSize: 12, boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}
+            labelStyle={{ color: "#94A3B8" }}
+            itemStyle={{ color: "#F8FAFC" }}
             formatter={(value) => [`$${Number(value).toFixed(2)}`, "PnL"]}
+            cursor={{ fill: "rgba(139, 92, 246, 0.1)" }}
           />
           <Bar dataKey="pnl" radius={[3, 3, 0, 0]}>
             {data.map((entry, i) => (
