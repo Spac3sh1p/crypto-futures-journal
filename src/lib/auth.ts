@@ -62,10 +62,19 @@ export async function isAuthenticated(): Promise<boolean> {
   if (!sessionCookie) return false;
 
   const expectedToken = makeSessionToken(appPassword, secret);
-  return crypto.timingSafeEqual(
-    Buffer.from(sessionCookie.value),
-    Buffer.from(expectedToken)
-  );
+  return safeTokenCompare(sessionCookie.value, expectedToken);
+}
+
+/**
+ * Constant-time token comparison that never throws on malformed input.
+ * Returns false if either value is not a string, or if lengths differ.
+ */
+export function safeTokenCompare(a: unknown, b: string): boolean {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  const bufA = Buffer.from(a, "utf8");
+  const bufB = Buffer.from(b, "utf8");
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 /**

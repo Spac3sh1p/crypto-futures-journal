@@ -152,19 +152,21 @@ export async function POST(
       }
     }
 
-    // Update exchange lastSync
-    await prisma.exchange.update({
-      where: { id },
-      data: { lastSync: new Date() },
-    });
-
     // Finalize SyncLog with appropriate status
     const finalStatus = insertErrors > 0
       ? (tradesAdded > 0 ? "partial" : "error")
       : "success";
     const message = insertErrors > 0
-      ? `Imported ${tradesAdded} trades, ${insertErrors} failed. Fetched ${rawTrades.length} total.`
+      ? `Imported ${tradesAdded} trades, ${insertErrors} failed. Fetched ${rawTrades.length} total. lastSync NOT advanced — retry will re-fetch failed trades.`
       : `Imported ${tradesAdded} new trades from ${rawTrades.length} fetched`;
+
+    // Only advance lastSync on full success to avoid skipping failed trades
+    if (finalStatus === "success") {
+      await prisma.exchange.update({
+        where: { id },
+        data: { lastSync: new Date() },
+      });
+    }
 
     await prisma.syncLog.update({
       where: { id: syncLog.id },
