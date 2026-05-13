@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 
 // PATCH /api/trades/[id] — update tags, notes, rating
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authErr = await requireAuth();
+  if (authErr) return authErr;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -14,6 +18,36 @@ export async function PATCH(
       notes?: string | null;
       rating?: number | null;
     };
+
+    // Validate rating: must be integer 1-5 or null
+    if (rating !== undefined && rating !== null) {
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return NextResponse.json(
+          { success: false, message: "Rating must be an integer between 1 and 5" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate tags: max 500 characters
+    if (tags !== undefined && tags !== null) {
+      if (typeof tags !== "string" || tags.length > 500) {
+        return NextResponse.json(
+          { success: false, message: "Tags must be a string with max 500 characters" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate notes: max 5000 characters
+    if (notes !== undefined && notes !== null) {
+      if (typeof notes !== "string" || notes.length > 5000) {
+        return NextResponse.json(
+          { success: false, message: "Notes must be a string with max 5000 characters" },
+          { status: 400 }
+        );
+      }
+    }
 
     const trade = await prisma.trade.findUnique({ where: { id } });
     if (!trade) {

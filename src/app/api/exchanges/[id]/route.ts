@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 
 // DELETE /api/exchanges/[id] — remove exchange and its trades
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authErr = await requireAuth();
+  if (authErr) return authErr;
+
   try {
     const { id } = await params;
 
@@ -37,10 +41,31 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authErr = await requireAuth();
+  if (authErr) return authErr;
+
   try {
     const { id } = await params;
     const body = await request.json();
     const { label, isActive } = body as { label?: string; isActive?: boolean };
+
+    // Validate label length
+    if (label !== undefined && label !== null) {
+      if (typeof label !== "string" || label.length > 100) {
+        return NextResponse.json(
+          { success: false, message: "Label must be a string with max 100 characters" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate isActive is boolean
+    if (isActive !== undefined && typeof isActive !== "boolean") {
+      return NextResponse.json(
+        { success: false, message: "isActive must be a boolean" },
+        { status: 400 }
+      );
+    }
 
     const exchange = await prisma.exchange.findUnique({ where: { id } });
     if (!exchange) {

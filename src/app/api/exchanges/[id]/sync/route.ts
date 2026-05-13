@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchBybitTrades, fetchBinanceTrades, fetchHyperliquidTrades } from "@/lib/exchange";
 import type { RawTrade } from "@/lib/exchange";
+import { requireAuth } from "@/lib/auth";
+import { decryptSecret } from "@/lib/crypto";
 
 // POST /api/exchanges/[id]/sync — trigger trade import
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authErr = await requireAuth();
+  if (authErr) return authErr;
+
   const { id } = await params;
 
   try {
@@ -26,16 +31,28 @@ export async function POST(
       );
     }
 
+    // Decrypt the apiSecret for use
+    let apiSecret: string;
+    try {
+      apiSecret = decryptSecret(exchange.apiSecret);
+    } catch (decryptError: unknown) {
+      const msg = decryptError instanceof Error ? decryptError.message : "Decryption failed";
+      return NextResponse.json(
+        { success: false, message: `Cannot decrypt credentials: ${msg}` },
+        { status: 500 }
+      );
+    }
+
     // Determine sync start time: last sync or 90 days ago
     const since: Date = exchange.lastSync
       ? exchange.lastSync
       : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-    // Create SyncLog entry
+    // Create SyncLog entry with "running" status
     const syncLog = await prisma.syncLog.create({
       data: {
         exchangeId: id,
-        status: "success",
+        status: "running",
         tradesAdded: 0,
         startedAt: new Date(),
       },
@@ -45,8 +62,8 @@ export async function POST(
     let rawTrades: RawTrade[] = [];
     const credentials = {
       apiKey: exchange.apiKey,
-      apiSecret: exchange.apiSecret,
-      exchange: exchange.name as "bybit" | "binance",
+      apiSecret,
+      exchange: exchange.name as "bybit" | "binance" | "hyperliquid",
     };
 
     try {
@@ -69,51 +86,70 @@ export async function POST(
       );
     }
 
-    // Insert trades, skip duplicates by externalId
+    // Batch insert trades, skip duplicates via composite unique (exchangeId + externalId)
     let tradesAdded = 0;
-    for (const raw of rawTrades) {
-      const existing = await prisma.trade.findFirst({
-        where: { externalId: raw.externalId },
-      });
-      if (existing) continue;
+    let insertErrors = 0;
 
-      // Calculate derived fields
-      const holdDuration = Math.round(
-        (raw.exitTime.getTime() - raw.entryTime.getTime()) / 1000
-      );
-      const pnlPercent =
-        raw.entryValue > 0 ? (raw.realizedPnl / raw.entryValue) * 100 : 0;
-      const isWin = raw.realizedPnl > 0;
+    // Get existing externalIds for this exchange to skip duplicates
+    const existingIds = new Set(
+      (await prisma.trade.findMany({
+        where: { exchangeId: id },
+        select: { externalId: true },
+      })).map((t) => t.externalId)
+    );
 
-      await prisma.trade.create({
-        data: {
-          exchangeId: id,
-          externalId: raw.externalId,
-          symbol: raw.symbol,
-          baseCoin: raw.baseCoin,
-          quoteCoin: raw.quoteCoin,
-          side: raw.side,
-          leverage: raw.leverage,
-          marginMode: raw.marginMode,
-          entryPrice: raw.entryPrice,
-          entryQty: raw.entryQty,
-          entryValue: raw.entryValue,
-          entryTime: raw.entryTime,
-          exitPrice: raw.exitPrice,
-          exitQty: raw.exitQty,
-          exitValue: raw.exitValue,
-          exitTime: raw.exitTime,
-          realizedPnl: raw.realizedPnl,
-          fee: raw.fee,
-          makerFee: raw.makerFee,
-          takerFee: raw.takerFee,
-          fundingFee: raw.fundingFee,
-          pnlPercent,
-          holdDuration,
-          isWin,
-        },
-      });
-      tradesAdded++;
+    // Filter to only new trades
+    const newTrades = rawTrades.filter((raw) => !existingIds.has(raw.externalId));
+
+    // Insert in batches of 50 within a transaction
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < newTrades.length; i += BATCH_SIZE) {
+      const batch = newTrades.slice(i, i + BATCH_SIZE);
+      try {
+        await prisma.$transaction(
+          batch.map((raw) => {
+            const holdDuration = Math.round(
+              (raw.exitTime.getTime() - raw.entryTime.getTime()) / 1000
+            );
+            const pnlPercent =
+              raw.entryValue > 0 ? (raw.realizedPnl / raw.entryValue) * 100 : 0;
+            const isWin = raw.realizedPnl > 0;
+
+            return prisma.trade.create({
+              data: {
+                exchangeId: id,
+                externalId: raw.externalId,
+                symbol: raw.symbol,
+                baseCoin: raw.baseCoin,
+                quoteCoin: raw.quoteCoin,
+                side: raw.side,
+                leverage: raw.leverage,
+                marginMode: raw.marginMode,
+                entryPrice: raw.entryPrice,
+                entryQty: raw.entryQty,
+                entryValue: raw.entryValue,
+                entryTime: raw.entryTime,
+                exitPrice: raw.exitPrice,
+                exitQty: raw.exitQty,
+                exitValue: raw.exitValue,
+                exitTime: raw.exitTime,
+                realizedPnl: raw.realizedPnl,
+                fee: raw.fee,
+                makerFee: raw.makerFee,
+                takerFee: raw.takerFee,
+                fundingFee: raw.fundingFee,
+                pnlPercent,
+                holdDuration,
+                isWin,
+              },
+            });
+          })
+        );
+        tradesAdded += batch.length;
+      } catch (batchError) {
+        console.error(`Batch insert failed at offset ${i}:`, batchError);
+        insertErrors += batch.length;
+      }
     }
 
     // Update exchange lastSync
@@ -122,13 +158,20 @@ export async function POST(
       data: { lastSync: new Date() },
     });
 
-    // Finalize SyncLog
+    // Finalize SyncLog with appropriate status
+    const finalStatus = insertErrors > 0
+      ? (tradesAdded > 0 ? "partial" : "error")
+      : "success";
+    const message = insertErrors > 0
+      ? `Imported ${tradesAdded} trades, ${insertErrors} failed. Fetched ${rawTrades.length} total.`
+      : `Imported ${tradesAdded} new trades from ${rawTrades.length} fetched`;
+
     await prisma.syncLog.update({
       where: { id: syncLog.id },
       data: {
-        status: "success",
+        status: finalStatus,
         tradesAdded,
-        message: `Imported ${tradesAdded} new trades from ${rawTrades.length} fetched`,
+        message,
         completedAt: new Date(),
       },
     });
@@ -138,7 +181,9 @@ export async function POST(
       data: {
         tradesAdded,
         totalFetched: rawTrades.length,
-        message: `Imported ${tradesAdded} new trades`,
+        duplicatesSkipped: rawTrades.length - newTrades.length,
+        errors: insertErrors,
+        message,
       },
     });
   } catch (error) {

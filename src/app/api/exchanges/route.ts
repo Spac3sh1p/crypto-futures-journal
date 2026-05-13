@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
+import { encryptSecret } from "@/lib/crypto";
 
 // GET /api/exchanges — list all exchanges (hide apiSecret)
 export async function GET() {
+  const authErr = await requireAuth();
+  if (authErr) return authErr;
+
   try {
     const exchanges = await prisma.exchange.findMany({
       orderBy: { createdAt: "desc" },
@@ -37,6 +42,9 @@ export async function GET() {
 
 // POST /api/exchanges — add new exchange (validate connection first)
 export async function POST(request: Request) {
+  const authErr = await requireAuth();
+  if (authErr) return authErr;
+
   try {
     const body = await request.json();
     const { name, apiKey, apiSecret, label } = body as {
@@ -57,6 +65,28 @@ export async function POST(request: Request) {
     if (!["bybit", "binance", "hyperliquid"].includes(name)) {
       return NextResponse.json(
         { success: false, message: "Supported exchanges: bybit, binance, hyperliquid" },
+        { status: 400 }
+      );
+    }
+
+    // Validate label length
+    if (label && (typeof label !== "string" || label.length > 100)) {
+      return NextResponse.json(
+        { success: false, message: "Label must be a string with max 100 characters" },
+        { status: 400 }
+      );
+    }
+
+    // Validate apiKey/apiSecret are strings and not excessively long
+    if (typeof apiKey !== "string" || apiKey.length > 500) {
+      return NextResponse.json(
+        { success: false, message: "Invalid API key format" },
+        { status: 400 }
+      );
+    }
+    if (typeof apiSecret !== "string" || apiSecret.length > 500) {
+      return NextResponse.json(
+        { success: false, message: "Invalid API secret format" },
         { status: 400 }
       );
     }
@@ -98,12 +128,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Encrypt apiSecret before saving
+    const encryptedSecret = encryptSecret(apiSecret);
+
     // Save to database
     const created = await prisma.exchange.create({
       data: {
         name,
         apiKey,
-        apiSecret,
+        apiSecret: encryptedSecret,
         label: label || null,
         isActive: true,
       },

@@ -7,12 +7,12 @@ datasource db {
   provider = "sqlite"
 }
 
-// Exchange API credentials (encrypted key stored, never exposed to client)
+// Exchange API credentials (apiSecret encrypted via AES-256-GCM, never exposed to client)
 model Exchange {
   id        String   @id @default(cuid())
-  name      String   // "bybit" | "binance"
-  apiKey    String
-  apiSecret String
+  name      String   // "bybit" | "binance" | "hyperliquid"
+  apiKey    String   // stored as plaintext (used for duplicate checks)
+  apiSecret String   // encrypted at rest via src/lib/crypto.ts
   label     String?  // user-defined label like "Main Account"
   isActive  Boolean  @default(true)
   lastSync  DateTime?
@@ -28,7 +28,7 @@ model Trade {
   exchange        Exchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
 
   // Identification
-  externalId      String   @unique // exchange-side trade/order ID for dedup
+  externalId      String   // exchange-side trade/order ID for dedup
   symbol          String   // "BTCUSDT"
   baseCoin        String   // "BTC"
   quoteCoin       String   // "USDT"
@@ -70,6 +70,7 @@ model Trade {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@unique([exchangeId, externalId])
   @@index([exchangeId])
   @@index([symbol])
   @@index([side])
@@ -104,7 +105,7 @@ model DailyStats {
 model SyncLog {
   id          String   @id @default(cuid())
   exchangeId  String
-  status      String   // "success" | "error" | "partial"
+  status      String   // "running" | "success" | "error" | "partial"
   tradesAdded Int      @default(0)
   message     String?
   startedAt   DateTime @default(now())

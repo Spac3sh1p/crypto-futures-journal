@@ -1,6 +1,11 @@
 import ccxt from "ccxt";
 import type { ExchangeCredentials, RawTrade, SyncResult } from "./types";
 
+/**
+ * Fetch individual fills from Hyperliquid.
+ * Each returned RawTrade represents a single execution fill.
+ * See RawTrade docs for limitations (entry=exit, holdDuration=0).
+ */
 export async function fetchHyperliquidTrades(
   credentials: ExchangeCredentials,
   since?: Date
@@ -14,34 +19,39 @@ export async function fetchHyperliquidTrades(
   const trades: RawTrade[] = [];
   const sinceTs = since ? since.getTime() : Date.now() - 90 * 24 * 60 * 60 * 1000;
 
-  const closedPositions = await exchange.fetchMyTrades(undefined, sinceTs, undefined, {
+  const fills = await exchange.fetchMyTrades(undefined, sinceTs, undefined, {
     type: "swap",
   });
 
-  for (const trade of closedPositions) {
-    const symbol = trade.symbol?.replace("/", "").replace(":USDC", "") || "";
+  for (const fill of fills) {
+    const symbol = fill.symbol?.replace("/", "").replace(":USDC", "") || "";
     const baseCoin = symbol.replace("USDC", "").replace("USDT", "");
 
-    const feeCost = trade.fee?.cost || 0;
-    const isMaker = trade.takerOrMaker === "maker";
+    const feeCost = fill.fee?.cost || 0;
+    const isMaker = fill.takerOrMaker === "maker";
+    const fillTime = new Date(fill.timestamp || Date.now());
+    const fillPrice = fill.price || 0;
+    const fillQty = fill.amount || 0;
+    const fillValue = fillPrice * fillQty;
+    const pnl = Number((fill.info as Record<string, unknown>)?.closedPnl) || 0;
 
     trades.push({
-      externalId: trade.id || `hyperliquid_${trade.timestamp}`,
+      externalId: fill.id || `hyperliquid_${fill.timestamp}`,
       symbol,
       baseCoin,
       quoteCoin: "USDC",
-      side: trade.side === "buy" ? "Long" : "Short",
+      side: fill.side === "buy" ? "Long" : "Short",
       leverage: 1,
       marginMode: "cross",
-      entryPrice: trade.price || 0,
-      entryQty: trade.amount || 0,
-      entryValue: (trade.price || 0) * (trade.amount || 0),
-      entryTime: new Date(trade.timestamp || Date.now()),
-      exitPrice: trade.price || 0,
-      exitQty: trade.amount || 0,
-      exitValue: (trade.price || 0) * (trade.amount || 0),
-      exitTime: new Date(trade.timestamp || Date.now()),
-      realizedPnl: (trade.info as Record<string, unknown>)?.closedPnl as number || 0,
+      entryPrice: fillPrice,
+      entryQty: fillQty,
+      entryValue: fillValue,
+      entryTime: fillTime,
+      exitPrice: fillPrice,
+      exitQty: fillQty,
+      exitValue: fillValue,
+      exitTime: fillTime,
+      realizedPnl: pnl,
       fee: feeCost,
       makerFee: isMaker ? feeCost : 0,
       takerFee: isMaker ? 0 : feeCost,

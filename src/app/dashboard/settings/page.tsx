@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ExchangeCard } from "@/components/settings/ExchangeCard";
 
 interface Exchange {
@@ -25,6 +25,7 @@ export default function SettingsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const initialLoadDone = useRef(false);
 
   const fetchExchanges = useCallback(async () => {
     try {
@@ -33,13 +34,13 @@ export default function SettingsPage() {
       if (json.success) setExchanges(json.data);
     } catch {
       console.error("Failed to fetch exchanges");
-    } finally {
-      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchExchanges();
+    if (initialLoadDone.current) return;
+    initialLoadDone.current = true;
+    fetchExchanges().finally(() => setLoading(false));
   }, [fetchExchanges]);
 
   const handleSubmit = async (e: React.FormEvent) => {
