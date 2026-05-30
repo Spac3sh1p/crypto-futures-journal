@@ -105,7 +105,25 @@ describe("calculateMetrics", () => {
     const m = calculateMetrics(trades);
 
     expect(m.totalFees).toBe(18);
-    expect(m.netPnlAfterFees).toBe(50 - 18); // totalPnl(50) - fees(18)
+    expect(m.netPnlAfterFees).toBe(50); // realizedPnl is already net after fees
     expect(m.expectancy).toBe(25); // 50 / 2
+  });
+
+  it("calculates drawdown and streaks chronologically even when input is newest first", () => {
+    const chronological = [
+      makeTrade({ realizedPnl: 100, isWin: true, exitTime: new Date("2024-01-01T00:00:00Z") }),
+      makeTrade({ realizedPnl: 50, isWin: true, exitTime: new Date("2024-01-02T00:00:00Z") }),
+      makeTrade({ realizedPnl: -80, isWin: false, exitTime: new Date("2024-01-03T00:00:00Z") }),
+      makeTrade({ realizedPnl: -60, isWin: false, exitTime: new Date("2024-01-04T00:00:00Z") }),
+      makeTrade({ realizedPnl: -20, isWin: false, exitTime: new Date("2024-01-05T00:00:00Z") }),
+      makeTrade({ realizedPnl: 30, isWin: true, exitTime: new Date("2024-01-06T00:00:00Z") }),
+    ];
+
+    const newestFirst = [...chronological].reverse();
+    const m = calculateMetrics(newestFirst);
+
+    expect(m.maxDrawdown).toBe(160);
+    expect(m.maxConsecutiveWins).toBe(2);
+    expect(m.maxConsecutiveLosses).toBe(3);
   });
 });

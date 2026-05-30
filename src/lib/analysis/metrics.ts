@@ -38,11 +38,14 @@ export function calculateMetrics(trades: Trade[]): PerformanceMetrics {
   const grossProfit = wins.reduce((sum, t) => sum + t.realizedPnl, 0);
   const grossLoss = Math.abs(losses.reduce((sum, t) => sum + t.realizedPnl, 0));
   const totalFees = trades.reduce((sum, t) => sum + t.fee, 0);
+  const chronologicalTrades = [...trades].sort(
+    (a, b) => a.exitTime.getTime() - b.exitTime.getTime()
+  );
 
   // Max consecutive wins/losses
   let maxConsecWins = 0, maxConsecLosses = 0;
   let currentWins = 0, currentLosses = 0;
-  for (const t of trades) {
+  for (const t of chronologicalTrades) {
     if (t.isWin) {
       currentWins++;
       currentLosses = 0;
@@ -56,7 +59,7 @@ export function calculateMetrics(trades: Trade[]): PerformanceMetrics {
 
   // Max drawdown (peak to trough in cumulative PnL)
   let peak = 0, maxDrawdown = 0, cumPnl = 0;
-  for (const t of trades) {
+  for (const t of chronologicalTrades) {
     cumPnl += t.realizedPnl;
     peak = Math.max(peak, cumPnl);
     maxDrawdown = Math.max(maxDrawdown, peak - cumPnl);
@@ -78,7 +81,7 @@ export function calculateMetrics(trades: Trade[]): PerformanceMetrics {
     avgHoldDuration: trades.reduce((sum, t) => sum + t.holdDuration, 0) / trades.length,
     avgLeverage: trades.reduce((sum, t) => sum + t.leverage, 0) / trades.length,
     totalFees,
-    netPnlAfterFees: totalPnl - totalFees,
+    netPnlAfterFees: totalPnl,
     expectancy: totalPnl / trades.length,
     maxConsecutiveWins: maxConsecWins,
     maxConsecutiveLosses: maxConsecLosses,

@@ -2,10 +2,11 @@
 
 import React, { useState, useCallback } from "react";
 import { TradeDetailPanel } from "./TradeDetailPanel";
-import { formatDuration, sanitizeCsvField } from "@/lib/formatters";
+import { formatDuration, formatSignedPositionNotional, formatTradePrice, sanitizeCsvField } from "@/lib/formatters";
 
 interface SerializedTrade {
   id: string;
+  exchangeName: string;
   symbol: string;
   side: string;
   leverage: number;
@@ -20,6 +21,7 @@ interface SerializedTrade {
   tags: string | null;
   notes: string | null;
   entryQty: number;
+  entryValue: number;
 }
 
 const PAGE_SIZE = 20;
@@ -126,16 +128,16 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
                   <td className="px-5 py-4">
                     <div className="font-semibold text-text-primary text-sm">{trade.symbol}</div>
                     <div className={`text-xs font-mono ${trade.side === "Long" ? "text-green" : "text-red"}`}>
-                      {trade.side === "Long" ? "+" : "-"}{trade.entryQty.toLocaleString()}
+                      {formatSignedPositionNotional(trade.entryValue, trade.side)}
                     </div>
                   </td>
 
                   {/* Open */}
                   <td className="px-5 py-4 text-center">
                     <div className="font-mono font-semibold text-text-primary text-sm">
-                      ${trade.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}@
+                      {formatTradePrice(trade.entryPrice)}
                     </div>
-                    <div className="text-[11px] text-text-muted mt-0.5">
+                    <div className="mt-1 font-mono text-xs font-medium text-text-secondary tabular-nums">
                       {formatDateTime(trade.entryTime)}
                     </div>
                   </td>
@@ -148,9 +150,9 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
                   {/* Close */}
                   <td className="px-5 py-4 text-center">
                     <div className="font-mono font-semibold text-text-primary text-sm">
-                      ${trade.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}@
+                      {formatTradePrice(trade.exitPrice)}
                     </div>
-                    <div className="text-[11px] text-text-muted mt-0.5">
+                    <div className="mt-1 font-mono text-xs font-medium text-text-secondary tabular-nums">
                       {formatDateTime(trade.exitTime)}
                     </div>
                   </td>

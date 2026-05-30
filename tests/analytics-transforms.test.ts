@@ -3,6 +3,7 @@ import {
   buildStatistics,
   buildSideBreakdown,
   buildDurationReport,
+  buildFeesReport,
   buildSizeReport,
   buildSymbolsReport,
 } from "@/lib/dashboard/analytics-transforms";
@@ -211,5 +212,19 @@ describe("buildSymbolsReport", () => {
     expect(sol.avgDuration).toBe(900);
     expect(sol.totalGain).toBe(20);
     expect(sol.avgGain).toBe(10);
+  });
+});
+
+describe("buildFeesReport", () => {
+  it("separates positive maker fees from negative maker rebates", () => {
+    const result = buildFeesReport([
+      makeTrade({ makerFee: -2, takerFee: 0, fee: -2 }),
+      makeTrade({ makerFee: 3, takerFee: 0, fee: 3 }),
+      makeTrade({ makerFee: 0, takerFee: 10, fee: 10 }),
+    ]);
+
+    expect(result.makerRebates).toBe(2);
+    expect(result.marketFeesPaid).toBe(13);
+    expect(result.net).toBe(-11);
   });
 });

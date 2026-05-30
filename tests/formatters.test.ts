@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseRange, formatDuration, sanitizeCsvField } from "@/lib/formatters";
+import {
+  parseRange,
+  formatDuration,
+  formatTradePrice,
+  sanitizeCsvField,
+  formatSignedPositionNotional,
+} from "@/lib/formatters";
 
 describe("parseRange", () => {
   it("returns valid range values unchanged", () => {
@@ -43,6 +49,22 @@ describe("formatDuration", () => {
   });
 });
 
+describe("formatSignedPositionNotional", () => {
+  it("formats long position notional in USDT value", () => {
+    expect(formatSignedPositionNotional(2061.3103, "Long")).toBe("+$2,061.31");
+  });
+
+  it("formats short position notional in USDT value", () => {
+    expect(formatSignedPositionNotional(5485.033, "Short")).toBe("-$5,485.03");
+  });
+});
+
+describe("formatTradePrice", () => {
+  it("formats price without trailing marker", () => {
+    expect(formatTradePrice(0.17936)).toBe("$0.1794");
+  });
+});
+
 describe("sanitizeCsvField", () => {
   it("returns safe strings unchanged", () => {
     expect(sanitizeCsvField("hello")).toBe("hello");
@@ -72,5 +94,14 @@ describe("sanitizeCsvField", () => {
 
   it("prepends quote for carriage return prefix", () => {
     expect(sanitizeCsvField("\rdata")).toBe("'\rdata");
+  });
+
+  it("prepends quote for line feed prefix", () => {
+    expect(sanitizeCsvField("\ndata")).toBe("'\ndata");
+  });
+
+  it("prepends quote for formulas after leading whitespace", () => {
+    expect(sanitizeCsvField("  =CMD()")).toBe("'  =CMD()");
+    expect(sanitizeCsvField("\t+SUM(A1:A2)")).toBe("'\t+SUM(A1:A2)");
   });
 });

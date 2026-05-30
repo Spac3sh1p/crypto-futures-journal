@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { Trade, Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { subDays, startOfDay, endOfDay } from "date-fns";
 import { type TradeRange } from "@/lib/formatters";
 
 export async function getTradesInRange(
   range: TradeRange,
   exchangeId?: string
-): Promise<Trade[]> {
+) {
   const now = new Date();
   let startDate: Date | undefined;
 
@@ -37,6 +37,11 @@ export async function getTradesInRange(
 
   return prisma.trade.findMany({
     where,
+    include: {
+      exchange: {
+        select: { name: true },
+      },
+    },
     orderBy: { exitTime: "desc" },
   });
 }

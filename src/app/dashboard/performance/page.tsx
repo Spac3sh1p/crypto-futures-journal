@@ -76,6 +76,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       <TradeHistoryTable
         trades={trades.map((t) => ({
           id: t.id,
+          exchangeName: t.exchange.name,
           symbol: t.symbol,
           side: t.side,
           leverage: t.leverage,
@@ -90,6 +91,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
           tags: t.tags,
           notes: t.notes,
           entryQty: t.entryQty,
+          entryValue: t.entryValue,
         }))}
       />
     </div>

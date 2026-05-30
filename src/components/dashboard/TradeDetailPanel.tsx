@@ -5,6 +5,7 @@ import { MiniKlineChart } from "./MiniKlineChart";
 
 interface TradeDetail {
   id: string;
+  exchangeName: string;
   symbol: string;
   side: string;
   leverage: number;
@@ -137,8 +138,12 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
           {/* Left: Chart */}
           <div className="flex-1 min-w-0">
             <MiniKlineChart
+              exchangeName={trade.exchangeName}
+              symbol={trade.symbol}
               entryPrice={trade.entryPrice}
               exitPrice={trade.exitPrice}
+              entryTime={trade.entryTime}
+              exitTime={trade.exitTime}
               side={trade.side}
             />
           </div>
@@ -148,21 +153,21 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
             {/* Funding & Fees */}
             <div className="flex gap-3 text-xs">
               <div className="flex-1 bg-bg-secondary rounded px-3 py-2 border border-border">
-                <span className="text-text-muted">Total Funding</span>
-                <span className={`float-right font-mono ${trade.fundingFee >= 0 ? "text-green" : "text-red"}`}>
+                <span className="font-medium text-text-secondary">Total Funding</span>
+                <span className={`float-right font-mono font-semibold tabular-nums ${trade.fundingFee >= 0 ? "text-green" : "text-red"}`}>
                   {trade.fundingFee >= 0 ? "+" : ""}${trade.fundingFee.toFixed(2)}
                 </span>
               </div>
               <div className="flex-1 bg-bg-secondary rounded px-3 py-2 border border-border">
-                <span className="text-text-muted">Fees</span>
-                <span className="float-right font-mono text-red">-${trade.fee.toFixed(2)}</span>
+                <span className="font-medium text-text-secondary">Fees</span>
+                <span className="float-right font-mono font-semibold tabular-nums text-red">-${trade.fee.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Tags — Interactive */}
             <div className="bg-bg-secondary rounded p-3 border border-border">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-text-muted">Tags</span>
+              <div className="flex justify-between items-center text-xs font-medium">
+                <span className="text-text-secondary">Tags</span>
                 <button
                   onClick={() => setShowTagManager(!showTagManager)}
                   className="text-text-muted hover:text-yellow transition-colors"
@@ -225,7 +230,7 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                 ) : (
                   <button
                     onClick={() => setShowTagInput(true)}
-                    className="text-xs text-text-muted hover:text-yellow transition-colors"
+                    className="text-xs font-medium text-text-secondary hover:text-yellow transition-colors"
                   >
                     + Add Tag
                   </button>
@@ -234,14 +239,14 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                 {/* Tag manager: preset quick-add */}
                 {showTagManager && (
                   <div className="mt-2 pt-2 border-t border-border-light">
-                    <span className="text-[10px] text-text-muted uppercase tracking-wider">Quick Add</span>
+                    <span className="text-[11px] font-medium text-text-secondary uppercase tracking-wider">Quick Add</span>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {PRESET_TAGS.filter((t) => !tags.includes(t)).map((preset) => (
                         <button
                           key={preset}
                           onClick={() => addTag(preset)}
                           disabled={tagSaving}
-                          className="px-2 py-0.5 text-[10px] text-text-muted bg-bg-tertiary border border-border-light rounded hover:border-yellow/40 hover:text-yellow transition-all disabled:opacity-40"
+                          className="px-2 py-0.5 text-[11px] font-medium text-text-secondary bg-bg-tertiary border border-border-light rounded hover:border-yellow/40 hover:text-yellow transition-all disabled:opacity-40"
                         >
                           {preset}
                         </button>
@@ -254,8 +259,8 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
 
             {/* Notes — Interactive */}
             <div className="bg-bg-secondary rounded p-3 border border-border">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-text-muted">Notes</span>
+              <div className="flex justify-between items-center text-xs font-medium">
+                <span className="text-text-secondary">Notes</span>
                 {notes && !editingNotes && (
                   <button
                     onClick={() => { setEditingNotes(true); setNotesDraft(notes); }}
@@ -305,7 +310,7 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                 ) : (
                   <button
                     onClick={() => { setEditingNotes(true); setNotesDraft(""); }}
-                    className="text-xs text-text-muted hover:text-yellow transition-colors"
+                    className="text-xs font-medium text-text-secondary hover:text-yellow transition-colors"
                   >
                     + Add Note
                   </button>

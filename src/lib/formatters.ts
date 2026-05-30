@@ -12,6 +12,15 @@ export function formatMoney(val: number): string {
   return `${prefix}${Math.abs(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+export function formatSignedPositionNotional(notional: number, side: string): string {
+  const signedValue = side === "Short" ? -Math.abs(notional) : Math.abs(notional);
+  return formatMoney(signedValue);
+}
+
+export function formatTradePrice(price: number): string {
+  return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+}
+
 const VALID_RANGES = ["7d", "30d", "90d", "all"] as const;
 export type TradeRange = (typeof VALID_RANGES)[number];
 
@@ -23,7 +32,7 @@ export function parseRange(raw: string | undefined): TradeRange {
 }
 
 export function sanitizeCsvField(value: string): string {
-  if (/^[=+\-@\t\r]/.test(value)) {
+  if (/^[\t\r\n]/.test(value) || /^\s*[=+\-@]/.test(value)) {
     return `'${value}`;
   }
   return value;

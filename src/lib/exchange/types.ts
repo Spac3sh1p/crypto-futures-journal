@@ -5,20 +5,14 @@ export interface ExchangeCredentials {
 }
 
 /**
- * RawTrade represents a single fill from the exchange API.
+ * RawTrade represents one normalized imported trade row.
  *
- * IMPORTANT: Each RawTrade is a single execution fill, NOT a closed position.
- * - entryPrice/exitPrice are the same (fill price)
- * - entryTime/exitTime are the same (fill timestamp)
- * - holdDuration will be 0
- * - realizedPnl is per-fill PnL (may be 0 for opening fills)
+ * Binance USDT futures imports reconstruct closed positions from execution
+ * fills, including multiple fills per order and partial-close orders. Other
+ * exchange importers may still emit fill-level rows until their closed-position
+ * history APIs are wired in.
  *
- * Future improvement: aggregate fills into closed positions using
- * exchange position history APIs (Bybit: /v5/position/closed-pnl,
- * Binance: /fapi/v1/userTrades with positionSide, Hyperliquid: fills endpoint).
- *
- * For now, analytics treat each fill independently. PnL accuracy depends on
- * the exchange including per-fill realized PnL in trade data.
+ * PnL accuracy depends on the exchange including realized PnL in trade data.
  */
 export interface RawTrade {
   externalId: string;

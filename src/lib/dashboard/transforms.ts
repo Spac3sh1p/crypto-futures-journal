@@ -13,11 +13,17 @@ export function buildCumulativePnlSeries(
     (a, b) => a.exitTime.getTime() - b.exitTime.getTime()
   );
 
+  const dailyPnl = new Map<string, number>();
+  sorted.forEach((trade) => {
+    const date = format(trade.exitTime, "yyyy-MM-dd");
+    dailyPnl.set(date, (dailyPnl.get(date) ?? 0) + trade.realizedPnl);
+  });
+
   let cumulative = 0;
-  return sorted.map((trade) => {
-    cumulative += trade.realizedPnl;
+  return Array.from(dailyPnl.entries()).map(([date, pnl]) => {
+    cumulative += pnl;
     return {
-      date: format(trade.exitTime, "yyyy-MM-dd"),
+      date,
       value: cumulative,
     };
   });
