@@ -1,8 +1,11 @@
+import { InfoHint } from "@/components/ui/InfoHint";
+
 interface MetricCardProps {
   label: string;
   value: string;
   subValue?: string;
   valueColor?: "green" | "red" | "default";
+  description?: string;
 }
 
 export function MetricCard({
@@ -10,6 +13,7 @@ export function MetricCard({
   value,
   subValue,
   valueColor = "default",
+  description,
 }: MetricCardProps) {
   const colorClass =
     valueColor === "green"
@@ -19,13 +23,14 @@ export function MetricCard({
         : "text-text-primary";
 
   return (
-    <div className="bg-bg-secondary rounded-[10px] p-4 border border-border border-t-2 border-t-yellow">
-      <div className="text-[10px] font-semibold text-text-muted uppercase tracking-[0.15em] mb-2 font-display">
-        {label}
+    <div className="min-w-0 rounded-[10px] border border-border border-t-2 border-t-yellow bg-bg-secondary p-4">
+      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+        <span>{label}</span>
+        {description && <InfoHint label={description} />}
       </div>
-      <div className={`text-lg font-bold font-mono ${colorClass}`}>{value}</div>
+      <div className={`truncate font-mono text-lg font-bold tabular-nums ${colorClass}`}>{value}</div>
       {subValue && (
-        <div className="text-[11px] text-text-muted mt-1.5">{subValue}</div>
+        <div className="mt-1.5 truncate text-[11px] font-medium text-text-muted">{subValue}</div>
       )}
     </div>
   );

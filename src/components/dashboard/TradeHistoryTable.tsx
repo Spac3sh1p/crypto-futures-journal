@@ -2,7 +2,15 @@
 
 import React, { useState, useCallback } from "react";
 import { TradeDetailPanel } from "./TradeDetailPanel";
-import { formatDuration, formatSignedPositionNotional, formatTradePrice, sanitizeCsvField } from "@/lib/formatters";
+import { InfoHint } from "@/components/ui/InfoHint";
+import {
+  formatDuration,
+  formatMoney,
+  formatSignedPositionNotional,
+  formatTradeDateTimeParts,
+  formatTradePrice,
+  sanitizeCsvField,
+} from "@/lib/formatters";
 
 interface SerializedTrade {
   id: string;
@@ -26,15 +34,6 @@ interface SerializedTrade {
 
 const PAGE_SIZE = 20;
 
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const day = String(d.getDate()).padStart(2, "0");
-  const mon = d.toLocaleString("en", { month: "short" });
-  const yr = String(d.getFullYear()).slice(2);
-  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-  return `${day}/${mon}/${yr} - ${time}`;
-}
-
 export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -42,6 +41,10 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
   const totalPages = Math.ceil(trades.length / PAGE_SIZE);
   const startIdx = (currentPage - 1) * PAGE_SIZE;
   const pageTrades = trades.slice(startIdx, startIdx + PAGE_SIZE);
+
+  const toggleTrade = useCallback((id: string) => {
+    setExpandedId((current) => current === id ? null : id);
+  }, []);
 
   const downloadCsv = useCallback(() => {
     const headers = ["Symbol", "Side", "Qty", "Entry Price", "Entry Time", "Exit Price", "Exit Time", "Hold Duration", "Fee", "Funding Fee", "Realised PNL", "Tags", "Notes"];
@@ -88,13 +91,18 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
 
   return (
     <div className="bg-bg-secondary rounded-[14px] border border-border">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <h3 className="text-[10px] font-bold text-yellow uppercase tracking-[0.2em] font-display">
-          Trade History
-        </h3>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div>
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.16em] text-yellow">
+            Trade History
+          </h3>
+          <p className="mt-1 text-xs font-medium text-text-muted">
+            Click a trade to inspect chart, fills, tags, and notes
+          </p>
+        </div>
         <button
           onClick={downloadCsv}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-text-secondary hover:text-yellow border border-border hover:border-yellow/40 rounded-lg transition-all duration-200"
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-all duration-200 hover:border-yellow/40 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="opacity-70">
             <path d="M6 1v7M6 8L3.5 5.5M6 8l2.5-2.5M2 10h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -104,31 +112,79 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[940px] text-sm">
+          <caption className="sr-only">Closed futures trade history</caption>
           <thead>
             <tr className="border-b border-border">
-              <th className="px-5 py-3 text-left text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Symbol/Size</th>
-              <th className="px-5 py-3 text-center text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Open</th>
-              <th className="px-5 py-3 text-center text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Hold Time</th>
-              <th className="px-5 py-3 text-center text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Close</th>
-              <th className="px-5 py-3 text-right text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Fee</th>
-              <th className="px-5 py-3 text-right text-[10px] font-bold text-yellow/70 tracking-[0.15em] font-display">Realised PNL</th>
+              <th scope="col" className="px-5 py-3 text-left font-display text-[10px] font-bold tracking-[0.15em] text-yellow/70">
+                <span className="inline-flex items-center gap-1.5">
+                  Symbol/Size
+                  <InfoHint label="Size is signed USDT notional at entry, not coin quantity." />
+                </span>
+              </th>
+              <th scope="col" className="px-5 py-3 text-center font-display text-[10px] font-bold tracking-[0.15em] text-yellow/70">Open</th>
+              <th scope="col" className="px-5 py-3 text-center font-display text-[10px] font-bold tracking-[0.15em] text-yellow/70">Hold Time</th>
+              <th scope="col" className="px-5 py-3 text-center font-display text-[10px] font-bold tracking-[0.15em] text-yellow/70">Close</th>
+              <th scope="col" className="px-5 py-3 text-right font-display text-[10px] font-bold tracking-[0.15em] text-yellow/70">Fee</th>
+              <th scope="col" className="px-5 py-3 text-right font-display text-[10px] font-bold tracking-[0.15em] text-yellow/70">Realised PNL</th>
             </tr>
           </thead>
           <tbody>
-            {pageTrades.map((trade) => (
-              <React.Fragment key={trade.id}>
+            {pageTrades.map((trade) => {
+              const entry = formatTradeDateTimeParts(trade.entryTime);
+              const exit = formatTradeDateTimeParts(trade.exitTime);
+              const detailId = `trade-detail-${trade.id}`;
+
+              return (
+                <React.Fragment key={trade.id}>
                 <tr
-                  onClick={() => setExpandedId(expandedId === trade.id ? null : trade.id)}
-                  className={`border-b border-border-light hover:bg-yellow-dim transition-all duration-150 cursor-pointer ${
-                    expandedId === trade.id ? "bg-bg-hover" : ""
+                  onClick={() => toggleTrade(trade.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      toggleTrade(trade.id);
+                    }
+                  }}
+                  tabIndex={0}
+                  aria-expanded={expandedId === trade.id}
+                  aria-controls={detailId}
+                  className={`cursor-pointer border-b border-border-light transition-all duration-150 hover:bg-yellow-dim focus-visible:bg-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow/50 ${
+                    expandedId === trade.id ? "bg-bg-hover shadow-[inset_3px_0_0_rgba(245,158,11,0.75)]" : ""
                   }`}
                 >
                   {/* Symbol/Size */}
                   <td className="px-5 py-4">
-                    <div className="font-semibold text-text-primary text-sm">{trade.symbol}</div>
-                    <div className={`text-xs font-mono ${trade.side === "Long" ? "text-green" : "text-red"}`}>
-                      {formatSignedPositionNotional(trade.entryValue, trade.side)}
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        aria-label={expandedId === trade.id ? `Collapse ${trade.symbol}` : `Expand ${trade.symbol}`}
+                        aria-expanded={expandedId === trade.id}
+                        aria-controls={detailId}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleTrade(trade.id);
+                        }}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-border bg-bg-tertiary text-xs font-bold text-text-secondary transition-colors hover:border-yellow/40 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
+                      >
+                        <span className={`transition-transform ${expandedId === trade.id ? "rotate-90" : ""}`}>
+                          &gt;
+                        </span>
+                      </button>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-text-primary">{trade.symbol}</span>
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            trade.side === "Long"
+                              ? "bg-green-dim text-green"
+                              : "bg-red-dim text-red"
+                          }`}>
+                            {trade.side === "Long" ? "Long" : "Short"}
+                          </span>
+                        </div>
+                        <div className={`font-mono text-xs tabular-nums ${trade.side === "Long" ? "text-green" : "text-red"}`}>
+                          {formatSignedPositionNotional(trade.entryValue, trade.side)}
+                        </div>
+                      </div>
                     </div>
                   </td>
 
@@ -137,8 +193,10 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
                     <div className="font-mono font-semibold text-text-primary text-sm">
                       {formatTradePrice(trade.entryPrice)}
                     </div>
-                    <div className="mt-1 font-mono text-xs font-medium text-text-secondary tabular-nums">
-                      {formatDateTime(trade.entryTime)}
+                    <div className="mt-1 flex items-center justify-center gap-1.5 font-mono text-[11px] font-medium text-text-secondary tabular-nums" title={entry.full}>
+                      <span>{entry.date}</span>
+                      <span className="text-text-muted/70">-</span>
+                      <span>{entry.time}</span>
                     </div>
                   </td>
 
@@ -152,46 +210,56 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
                     <div className="font-mono font-semibold text-text-primary text-sm">
                       {formatTradePrice(trade.exitPrice)}
                     </div>
-                    <div className="mt-1 font-mono text-xs font-medium text-text-secondary tabular-nums">
-                      {formatDateTime(trade.exitTime)}
+                    <div className="mt-1 flex items-center justify-center gap-1.5 font-mono text-[11px] font-medium text-text-secondary tabular-nums" title={exit.full}>
+                      <span>{exit.date}</span>
+                      <span className="text-text-muted/70">-</span>
+                      <span>{exit.time}</span>
                     </div>
                   </td>
 
                   {/* Fee */}
                   <td className="px-5 py-4 text-right font-mono text-red text-sm">
-                    -${trade.fee.toFixed(2)}
+                    {formatMoney(-Math.abs(trade.fee))}
                   </td>
 
                   {/* Realised PNL */}
                   <td className={`px-5 py-4 text-right font-mono font-semibold text-sm ${
                     trade.realizedPnl >= 0 ? "text-green" : "text-red"
                   }`}>
-                    {trade.realizedPnl >= 0 ? "+" : ""}${trade.realizedPnl.toFixed(2)}
+                    {formatMoney(trade.realizedPnl)}
                   </td>
                 </tr>
                 {expandedId === trade.id && (
-                  <tr>
+                  <tr id={detailId}>
                     <td colSpan={6} className="p-0">
                       <TradeDetailPanel trade={trade} />
                     </td>
                   </tr>
                 )}
               </React.Fragment>
-            ))}
+              );
+            })}
           </tbody>
         </table>
+        {pageTrades.length === 0 && (
+          <div className="px-5 py-10 text-center text-sm font-medium text-text-muted">
+            No trades in this range.
+          </div>
+        )}
       </div>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-5 py-3 border-t border-border">
           <span className="text-xs text-text-muted">
-            {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, trades.length)} of {trades.length} trades
+            {startIdx + 1}-{Math.min(startIdx + PAGE_SIZE, trades.length)} of {trades.length} trades
           </span>
           <div className="flex items-center gap-1">
             <button
+              type="button"
+              aria-label="Previous trade page"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-2 py-1 text-xs rounded border border-border text-text-secondary hover:text-text-primary hover:border-text-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="rounded border border-border px-2 py-1 text-xs text-text-secondary transition-colors hover:border-text-muted hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:cursor-not-allowed disabled:opacity-30"
             >
               Prev
             </button>
@@ -200,9 +268,12 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
                 <span key={`ellipsis-${i}`} className="px-2 py-1 text-xs text-text-muted">...</span>
               ) : (
                 <button
+                  type="button"
+                  aria-label={`Go to trade page ${page}`}
+                  aria-current={currentPage === page ? "page" : undefined}
                   key={page}
                   onClick={() => setCurrentPage(page as number)}
-                  className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                  className={`rounded px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 ${
                     currentPage === page
                       ? "bg-yellow text-bg-primary font-semibold"
                       : "border border-border text-text-secondary hover:text-text-primary hover:border-text-muted"
@@ -213,9 +284,11 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
               )
             )}
             <button
+              type="button"
+              aria-label="Next trade page"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-2 py-1 text-xs rounded border border-border text-text-secondary hover:text-text-primary hover:border-text-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="rounded border border-border px-2 py-1 text-xs text-text-secondary transition-colors hover:border-text-muted hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:cursor-not-allowed disabled:opacity-30"
             >
               Next
             </button>

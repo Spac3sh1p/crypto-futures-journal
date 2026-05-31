@@ -40,16 +40,19 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-60 h-full bg-bg-secondary border-r border-border flex flex-col shrink-0">
-      <div className="p-5 border-b border-border">
-        <h1 className="text-sm font-bold text-yellow uppercase tracking-[0.15em] font-display">
+    <aside className="flex h-full w-20 shrink-0 flex-col border-r border-border bg-bg-secondary sm:w-60">
+      <div className="border-b border-border p-4 sm:p-5">
+        <h1 className="hidden text-sm font-bold uppercase tracking-[0.15em] text-yellow sm:block">
           Crypto Futures
         </h1>
-        <p className="text-[11px] text-text-muted mt-1 tracking-wide">Trading Journal</p>
+        <h1 className="text-center text-xs font-bold uppercase tracking-[0.12em] text-yellow sm:hidden">
+          CF
+        </h1>
+        <p className="mt-1 hidden text-[11px] tracking-wide text-text-muted sm:block">Trading Journal</p>
       </div>
 
-      <nav className="flex-1 p-3">
-        <div className="text-[10px] font-semibold text-text-muted uppercase tracking-[0.2em] px-3 py-2 font-display">
+      <nav className="flex-1 p-3" aria-label="Dashboard navigation">
+        <div className="hidden px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted sm:block">
           Dashboard
         </div>
         {navItems.map((item) => {
@@ -58,14 +61,16 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+              title={item.label}
+              aria-current={isActive ? "page" : undefined}
+              className={`flex items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 sm:justify-start ${
                 isActive
                   ? "bg-yellow-dim text-yellow font-medium border border-yellow/20"
                   : "text-text-secondary hover:text-text-primary hover:bg-bg-hover"
               }`}
             >
               <item.Icon className={isActive ? "text-yellow" : ""} />
-              {item.label}
+              <span className="hidden sm:inline">{item.label}</span>
             </Link>
           );
         })}

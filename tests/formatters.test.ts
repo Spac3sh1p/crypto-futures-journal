@@ -3,6 +3,7 @@ import {
   parseRange,
   formatDuration,
   formatTradePrice,
+  formatTradeDateTimeParts,
   sanitizeCsvField,
   formatSignedPositionNotional,
 } from "@/lib/formatters";
@@ -62,6 +63,16 @@ describe("formatSignedPositionNotional", () => {
 describe("formatTradePrice", () => {
   it("formats price without trailing marker", () => {
     expect(formatTradePrice(0.17936)).toBe("$0.1794");
+  });
+});
+
+describe("formatTradeDateTimeParts", () => {
+  it("formats trade date and time consistently", () => {
+    expect(formatTradeDateTimeParts(new Date(2026, 4, 30, 4, 25, 32))).toEqual({
+      date: "30/May/26",
+      time: "04:25:32",
+      full: "30/May/26 - 04:25:32",
+    });
   });
 });
 

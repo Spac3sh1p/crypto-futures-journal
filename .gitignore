@@ -54,3 +54,4 @@ next-env.d.ts
 
 # local demo/scratch artifacts
 _demo/
+output/playwright/

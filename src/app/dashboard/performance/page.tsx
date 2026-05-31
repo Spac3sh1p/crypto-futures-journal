@@ -28,41 +28,47 @@ export default async function PerformancePage({ searchParams }: PageProps) {
   const tradeCount = buildTradeCountSeries(trades);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 lg:space-y-6">
       {/* Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         <MetricCard
           label="Total PnL"
           value={`${metrics.totalPnl >= 0 ? "+" : ""}$${metrics.totalPnl.toFixed(2)}`}
           valueColor={metrics.totalPnl >= 0 ? "green" : "red"}
           subValue={`${metrics.totalTrades} trades`}
+          description="Sum of realised PnL for closed aggregate trades in the selected range."
         />
         <MetricCard
           label="Today"
           value={`${todayPnl >= 0 ? "+" : ""}$${todayPnl.toFixed(2)}`}
           valueColor={todayPnl >= 0 ? "green" : "red"}
+          description="Realised PnL from trades closed today."
         />
         <MetricCard
           label="Win Rate"
           value={`${metrics.winRate.toFixed(1)}%`}
           subValue={`${metrics.winCount}W / ${metrics.lossCount}L`}
+          description="Winning closed trades divided by total closed trades."
         />
         <MetricCard
           label="Profit Factor"
           value={metrics.profitFactor.toFixed(2)}
           subValue="Gross P / Gross L"
+          description="Gross realised profit divided by gross realised loss."
         />
         <MetricCard
           label="Avg Win"
           value={`+$${metrics.avgWin.toFixed(0)}`}
           valueColor="green"
           subValue={`Avg Loss: -$${Math.abs(metrics.avgLoss).toFixed(0)}`}
+          description="Average realised PnL for winning trades; average loss is shown below."
         />
         <MetricCard
           label="Max Drawdown"
           value={`-$${metrics.maxDrawdown.toFixed(0)}`}
           valueColor="red"
           subValue={`${metrics.maxConsecutiveLosses} consec. losses`}
+          description="Largest peak-to-trough decline in realised cumulative PnL for the selected range."
         />
       </div>
 

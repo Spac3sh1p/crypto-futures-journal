@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { MarketCandle } from "@/lib/market/klines";
 
 interface MiniKlineChartProps {
@@ -31,11 +31,15 @@ interface KlineState {
 }
 
 const CHART_WIDTH = 920;
-const CHART_HEIGHT = 280;
-const PLOT_LEFT = 56;
-const PLOT_RIGHT = 24;
-const PLOT_TOP = 20;
-const PLOT_BOTTOM = 32;
+const CHART_HEIGHT = 276;
+const PLOT_LEFT = 18;
+const PLOT_RIGHT = 78;
+const PLOT_TOP = 24;
+const PLOT_BOTTOM = 30;
+const UP_COLOR = "#22ab94";
+const DOWN_COLOR = "#ef5350";
+const GRID_COLOR = "#243247";
+const CHART_BG = "#0b111d";
 
 function markerLabel(side: string, phase: "entry" | "exit"): "B" | "S" {
   if (side === "Short") {
@@ -64,6 +68,37 @@ function formatChartPrice(price: number): string {
   return `$${price.toPrecision(4)}`;
 }
 
+function MarkerShape({
+  label,
+  x,
+  y,
+}: {
+  label: "B" | "S";
+  x: number;
+  y: number;
+}) {
+  const fill = label === "B" ? UP_COLOR : DOWN_COLOR;
+  const boxY = label === "B" ? 8 : -24;
+  const pointerPath = label === "B"
+    ? "M 0 1 L -5 8 L 5 8 Z"
+    : "M 0 -1 L -5 -8 L 5 -8 Z";
+
+  return (
+    <g transform={`translate(${x}, ${y})`}>
+      <path d={pointerPath} fill={fill} />
+      <rect x="-11" y={boxY} width="22" height="16" rx="4" fill={fill} />
+      <text
+        x="0"
+        y={boxY + 11.5}
+        textAnchor="middle"
+        className="fill-[#061018] font-mono text-[10px] font-bold"
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
 export function MiniKlineChart({
   exchangeName,
   symbol,
@@ -73,6 +108,8 @@ export function MiniKlineChart({
   exitTime,
   side,
 }: MiniKlineChartProps) {
+  const rawGridId = useId();
+  const gridId = `mini-kline-grid-${rawGridId.replace(/:/g, "")}`;
   const normalizedExchange = exchangeName.toLowerCase();
   const entryMs = Date.parse(entryTime);
   const exitMs = Date.parse(exitTime);
@@ -184,9 +221,10 @@ export function MiniKlineChart({
     const plotWidth = CHART_WIDTH - PLOT_LEFT - PLOT_RIGHT;
     const plotHeight = CHART_HEIGHT - PLOT_TOP - PLOT_BOTTOM;
     const candleGap = plotWidth / activeState.candles.length;
-    const candleWidth = Math.max(3, Math.min(9, candleGap * 0.58));
+    const candleWidth = Math.max(2.5, Math.min(7, candleGap * 0.52));
     const entryIndex = nearestCandleIndex(activeState.candles, entryMs);
     const exitIndex = nearestCandleIndex(activeState.candles, exitMs);
+    const lastClose = activeState.candles.at(-1)?.close ?? exitPrice;
 
     const xForIndex = (index: number) => PLOT_LEFT + candleGap * index + candleGap / 2;
     const yForPrice = (price: number) =>
@@ -199,6 +237,7 @@ export function MiniKlineChart({
       exitIndex,
       maePrice,
       mfePrice,
+      lastClose,
       plotHeight,
       plotWidth,
       xForIndex,
@@ -216,44 +255,80 @@ export function MiniKlineChart({
 
   return (
     <div className="relative">
-      <div className="mb-2 flex items-center gap-4">
-        <select
-          disabled
-          className="rounded border border-border bg-bg-tertiary px-2 py-1 text-xs font-medium text-text-secondary"
-        >
-          <option>{activeState.interval ? `${activeState.interval} Real Candles` : "Real Candles"}</option>
-        </select>
-        <span className="text-xs font-medium text-text-secondary">Full Screen</span>
-        <span className="ml-auto text-xs font-medium text-text-secondary">Filter</span>
+      <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-[#263448] bg-[#0d1422] px-3 py-2">
+        <span className="font-mono text-xs font-semibold text-text-primary">
+          {symbol}
+        </span>
+        <span className="text-xs font-medium text-text-muted">·</span>
+        <span className="text-xs font-medium text-text-secondary">
+          {activeState.interval || "Real"} · Binance Futures
+        </span>
+        <span className="flex w-full items-center gap-2 text-xs font-medium text-text-secondary sm:ml-auto sm:w-auto">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: UP_COLOR }} />
+            B
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: DOWN_COLOR }} />
+            S
+          </span>
+        </span>
       </div>
 
       {!chart ? (
-        <div className="flex h-[280px] w-full items-center justify-center rounded border border-blue bg-blue-dim/20">
+        <div className={`flex h-[276px] w-full items-center justify-center rounded-lg border border-[#263448] bg-[#0b111d] ${activeState.loading ? "animate-pulse" : ""}`}>
           <div className="text-center">
-            <div className="text-xs font-semibold text-text-secondary">{placeholderTitle}</div>
+            <div className="text-xs font-semibold text-text-secondary" role="status">{placeholderTitle}</div>
             <div className="mt-1 max-w-md text-xs font-medium text-text-muted">{placeholderMessage}</div>
           </div>
         </div>
       ) : (
-        <>
+        <div className="relative overflow-hidden rounded-lg border border-[#263448]" style={{ backgroundColor: CHART_BG }}>
+          <div className="absolute right-3 top-3 z-10 flex flex-wrap justify-end gap-1.5">
+            <span
+              title="Most Favorable Excursion: best market price reached inside the loaded candle window."
+              className="rounded bg-[#121b2b]/90 px-2 py-1 font-mono text-[10px] font-semibold text-text-secondary ring-1 ring-[#27364b]"
+            >
+              MFE {formatChartPrice(chart.mfePrice)}
+            </span>
+            <span
+              title="Maximum Adverse Excursion: worst market price reached inside the loaded candle window."
+              className="rounded bg-[#121b2b]/90 px-2 py-1 font-mono text-[10px] font-semibold text-text-secondary ring-1 ring-[#27364b]"
+            >
+              MAE {formatChartPrice(chart.maePrice)}
+            </span>
+          </div>
           <svg
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-            className="h-[280px] w-full overflow-visible rounded border border-blue bg-blue-dim/20"
+            className="h-[276px] w-full overflow-visible"
             role="img"
-            aria-label={`${side} trade real candlestick summary with ${entryMarker} and ${exitMarker} markers`}
+            aria-label={`${symbol} ${side} trade real candlestick summary with ${entryMarker} and ${exitMarker} markers`}
           >
             <defs>
-              <pattern id="mini-kline-grid" width="16" height="16" patternUnits="userSpaceOnUse">
-                <path d="M 16 0 L 0 0 0 16" fill="none" stroke="#2b3139" strokeWidth="1" opacity="0.55" />
+              <pattern id={gridId} width="16" height="16" patternUnits="userSpaceOnUse">
+                <path d="M 16 0 L 0 0 0 16" fill="none" stroke={GRID_COLOR} strokeWidth="1" opacity="0.22" />
               </pattern>
             </defs>
+            <rect x="0" y="0" width={CHART_WIDTH} height={CHART_HEIGHT} fill={CHART_BG} />
             <rect
               x={PLOT_LEFT}
               y={PLOT_TOP}
               width={chart.plotWidth}
               height={chart.plotHeight}
-              fill="url(#mini-kline-grid)"
+              fill={`url(#${gridId})`}
             />
+            {Array.from({ length: 5 }, (_, i) => (
+              <line
+                key={`vertical-${i}`}
+                x1={PLOT_LEFT + (chart.plotWidth * i) / 4}
+                x2={PLOT_LEFT + (chart.plotWidth * i) / 4}
+                y1={PLOT_TOP}
+                y2={CHART_HEIGHT - PLOT_BOTTOM}
+                stroke={GRID_COLOR}
+                strokeDasharray="3 6"
+                strokeOpacity="0.35"
+              />
+            ))}
             {chart.yTicks.map((tick) => (
               <g key={tick}>
                 <line
@@ -261,14 +336,15 @@ export function MiniKlineChart({
                   x2={CHART_WIDTH - PLOT_RIGHT}
                   y1={chart.yForPrice(tick)}
                   y2={chart.yForPrice(tick)}
-                  stroke="#2b3139"
-                  strokeDasharray="4 4"
+                  stroke={GRID_COLOR}
+                  strokeDasharray="3 6"
+                  strokeOpacity="0.55"
                 />
                 <text
-                  x={PLOT_LEFT - 10}
+                  x={CHART_WIDTH - PLOT_RIGHT + 12}
                   y={chart.yForPrice(tick) + 3}
-                  textAnchor="end"
-                  className="fill-text-muted font-mono text-[10px]"
+                  textAnchor="start"
+                  className="fill-[#6f7d90] font-mono text-[10px] font-medium"
                 >
                   {formatChartPrice(tick)}
                 </text>
@@ -279,13 +355,34 @@ export function MiniKlineChart({
               x2={CHART_WIDTH - PLOT_RIGHT}
               y1={chart.yForPrice(entryPrice)}
               y2={chart.yForPrice(entryPrice)}
-              stroke="#f0b90b"
-              strokeDasharray="5 5"
+              stroke={entryMarker === "B" ? UP_COLOR : DOWN_COLOR}
+              strokeDasharray="4 7"
+              strokeOpacity="0.55"
+              strokeWidth="1"
+            />
+            <line
+              x1={PLOT_LEFT}
+              x2={CHART_WIDTH - PLOT_RIGHT}
+              y1={chart.yForPrice(exitPrice)}
+              y2={chart.yForPrice(exitPrice)}
+              stroke={exitMarker === "B" ? UP_COLOR : DOWN_COLOR}
+              strokeDasharray="4 7"
+              strokeOpacity="0.4"
+              strokeWidth="1"
+            />
+            <line
+              x1={PLOT_LEFT}
+              x2={CHART_WIDTH - PLOT_RIGHT}
+              y1={chart.yForPrice(chart.lastClose)}
+              y2={chart.yForPrice(chart.lastClose)}
+              stroke="#7b8798"
+              strokeDasharray="2 5"
+              strokeOpacity="0.35"
               strokeWidth="1"
             />
             {activeState.candles.map((candle, index) => {
               const bullish = candle.close >= candle.open;
-              const color = bullish ? "#0ecb81" : "#f6465d";
+              const color = bullish ? UP_COLOR : DOWN_COLOR;
               const x = chart.xForIndex(index);
               const openY = chart.yForPrice(candle.open);
               const closeY = chart.yForPrice(candle.close);
@@ -300,39 +397,52 @@ export function MiniKlineChart({
                     y1={chart.yForPrice(candle.high)}
                     y2={chart.yForPrice(candle.low)}
                     stroke={color}
-                    strokeWidth="1.4"
+                    strokeOpacity="0.9"
+                    strokeWidth="1.25"
                   />
                   <rect
                     x={x - chart.candleWidth / 2}
                     y={bodyTop}
                     width={chart.candleWidth}
                     height={bodyHeight}
-                    fill={color}
-                    rx="1"
+                    fill={bullish ? color : "transparent"}
+                    stroke={color}
+                    strokeWidth="1"
+                    rx="0.5"
                   />
                 </g>
               );
             })}
-            <g transform={`translate(${chart.xForIndex(chart.entryIndex)}, ${chart.yForPrice(entryPrice)})`}>
-              <circle r="9" fill={entryMarker === "B" ? "#0ecb81" : "#f6465d"} />
-              <text textAnchor="middle" y="3.5" className="fill-bg-primary font-mono text-[10px] font-bold">
-                {entryMarker}
-              </text>
-            </g>
-            <g transform={`translate(${chart.xForIndex(chart.exitIndex)}, ${chart.yForPrice(exitPrice)})`}>
-              <circle r="9" fill={exitMarker === "B" ? "#0ecb81" : "#f6465d"} />
-              <text textAnchor="middle" y="3.5" className="fill-bg-primary font-mono text-[10px] font-bold">
-                {exitMarker}
-              </text>
-            </g>
+            <text
+              x={CHART_WIDTH - PLOT_RIGHT + 12}
+              y={chart.yForPrice(entryPrice) + 3}
+              textAnchor="start"
+              fill={entryMarker === "B" ? UP_COLOR : DOWN_COLOR}
+              className="font-mono text-[10px] font-bold"
+            >
+              {entryMarker}
+            </text>
+            <text
+              x={CHART_WIDTH - PLOT_RIGHT + 12}
+              y={chart.yForPrice(exitPrice) + 3}
+              textAnchor="start"
+              fill={exitMarker === "B" ? UP_COLOR : DOWN_COLOR}
+              className="font-mono text-[10px] font-bold"
+            >
+              {exitMarker}
+            </text>
+            <MarkerShape
+              label={entryMarker}
+              x={chart.xForIndex(chart.entryIndex)}
+              y={chart.yForPrice(entryPrice)}
+            />
+            <MarkerShape
+              label={exitMarker}
+              x={chart.xForIndex(chart.exitIndex)}
+              y={chart.yForPrice(exitPrice)}
+            />
           </svg>
-          <div className="absolute left-20 top-8 text-[10px] font-medium text-text-secondary">
-            MFE {formatChartPrice(chart.mfePrice)}
-          </div>
-          <div className="absolute bottom-16 left-20 text-[10px] font-medium text-text-secondary">
-            MAE {formatChartPrice(chart.maePrice)}
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

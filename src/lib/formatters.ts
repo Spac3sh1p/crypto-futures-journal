@@ -21,6 +21,31 @@ export function formatTradePrice(price: number): string {
   return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
 }
 
+export interface DateTimeParts {
+  date: string;
+  time: string;
+  full: string;
+}
+
+export function formatTradeDateTimeParts(input: string | Date): DateTimeParts {
+  const d = typeof input === "string" ? new Date(input) : input;
+  const day = String(d.getDate()).padStart(2, "0");
+  const mon = d.toLocaleString("en", { month: "short" });
+  const yr = String(d.getFullYear()).slice(2);
+  const time = d.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const date = `${day}/${mon}/${yr}`;
+  return {
+    date,
+    time,
+    full: `${date} - ${time}`,
+  };
+}
+
 const VALID_RANGES = ["7d", "30d", "90d", "all"] as const;
 export type TradeRange = (typeof VALID_RANGES)[number];
 
