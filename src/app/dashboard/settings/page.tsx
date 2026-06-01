@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ExchangeCard } from "@/components/settings/ExchangeCard";
+import { useI18n } from "@/components/i18n/LanguageProvider";
+import { template } from "@/lib/i18n";
 
 interface Exchange {
   id: string;
@@ -14,6 +16,8 @@ interface Exchange {
 }
 
 export default function SettingsPage() {
+  const { dictionary } = useI18n();
+  const text = dictionary.settings;
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -57,15 +61,15 @@ export default function SettingsPage() {
       const json = await res.json();
 
       if (json.success) {
-        setMessage({ type: "success", text: "Exchange connected successfully!" });
+        setMessage({ type: "success", text: text.connected });
         setFormData({ name: "bybit", apiKey: "", apiSecret: "", label: "" });
         setShowForm(false);
         await fetchExchanges();
       } else {
-        setMessage({ type: "error", text: json.message || "Failed to add exchange" });
+        setMessage({ type: "error", text: text.addFailed });
       }
     } catch {
-      setMessage({ type: "error", text: "Network error" });
+      setMessage({ type: "error", text: text.networkError });
     } finally {
       setSubmitting(false);
     }
@@ -77,12 +81,12 @@ export default function SettingsPage() {
       const json = await res.json();
       if (json.success) {
         setExchanges((prev) => prev.filter((ex) => ex.id !== id));
-        setMessage({ type: "success", text: "Exchange deleted" });
+        setMessage({ type: "success", text: text.deleted });
       } else {
-        setMessage({ type: "error", text: json.message || "Failed to delete" });
+        setMessage({ type: "error", text: text.deleteFailed });
       }
     } catch {
-      setMessage({ type: "error", text: "Network error" });
+      setMessage({ type: "error", text: text.networkError });
     }
   };
 
@@ -92,36 +96,42 @@ export default function SettingsPage() {
       const res = await fetch(`/api/exchanges/${id}/sync`, { method: "POST" });
       const json = await res.json();
       if (json.success) {
-        setMessage({ type: "success", text: `${json.data.message}` });
+        setMessage({
+          type: "success",
+          text: template(text.syncSucceeded, {
+            trades: json.data?.tradesAdded ?? 0,
+            flows: json.data?.accountFlowsAdded ?? 0,
+          }),
+        });
         await fetchExchanges();
       } else {
-        setMessage({ type: "error", text: json.message || "Sync failed" });
+        setMessage({ type: "error", text: text.syncFailed });
       }
     } catch {
-      setMessage({ type: "error", text: "Sync network error" });
+      setMessage({ type: "error", text: text.syncNetworkError });
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[10px] font-bold text-yellow uppercase tracking-[0.2em] font-display">
-            Exchange Connections
+          <h1 className="terminal-section-title">
+            {text.title}
           </h1>
-          <p className="text-sm text-text-muted mt-1">
-            Manage your exchange API keys and import trades
+          <p className="mt-1 text-sm font-medium text-text-muted">
+            {text.subtitle}
           </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-bg-primary bg-gradient-to-r from-yellow to-yellow/80 rounded-lg hover:brightness-110 transition-all duration-200 shadow-lg shadow-yellow/10"
+          className="flex items-center gap-2 rounded-lg bg-yellow px-4 py-2 text-sm font-semibold text-[#08111D] transition-all duration-200 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          Add Exchange
+          {text.addExchange}
         </button>
       </div>
 
@@ -138,19 +148,18 @@ export default function SettingsPage() {
 
       {/* Add Exchange Form */}
       {showForm && (
-        <div className="bg-bg-secondary rounded-[14px] border border-border p-6 relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple to-yellow" />
-          <h3 className="text-[10px] font-bold text-purple uppercase tracking-[0.2em] font-display mb-5">
-            New Connection
+        <div className="trading-panel p-6">
+          <h3 className="mb-5 text-sm font-semibold text-text-primary">
+            {text.newConnection}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Platform select */}
             <div>
-              <label className="text-xs text-text-muted block mb-1.5">Platform</label>
+              <label className="text-xs text-text-muted block mb-1.5">{text.platform}</label>
               <select
                 value={formData.name}
                 onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value as "bybit" | "binance" | "hyperliquid" }))}
-                className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary focus:border-yellow focus:outline-none transition-colors"
+                className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary transition-colors focus:border-yellow focus:outline-none"
               >
                 <option value="bybit">Bybit</option>
                 <option value="binance">Binance</option>
@@ -160,46 +169,46 @@ export default function SettingsPage() {
 
             {/* API Key */}
             <div>
-              <label className="text-xs text-text-muted block mb-1.5">API Key</label>
+              <label className="text-xs text-text-muted block mb-1.5">{text.apiKey}</label>
               <input
                 type="text"
                 value={formData.apiKey}
                 onChange={(e) => setFormData((f) => ({ ...f, apiKey: e.target.value }))}
-                placeholder="Enter your API key"
+                placeholder={text.apiKeyPlaceholder}
                 required
-                className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary font-mono placeholder:text-text-muted/50 focus:border-yellow focus:outline-none transition-colors"
+                className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2.5 font-mono text-sm text-text-primary transition-colors placeholder:text-text-muted/50 focus:border-yellow focus:outline-none"
               />
             </div>
 
             {/* API Secret */}
             <div>
-              <label className="text-xs text-text-muted block mb-1.5">API Secret</label>
+              <label className="text-xs text-text-muted block mb-1.5">{text.apiSecret}</label>
               <input
                 type="password"
                 value={formData.apiSecret}
                 onChange={(e) => setFormData((f) => ({ ...f, apiSecret: e.target.value }))}
-                placeholder="Enter your API secret"
+                placeholder={text.apiSecretPlaceholder}
                 required
-                className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary font-mono placeholder:text-text-muted/50 focus:border-yellow focus:outline-none transition-colors"
+                className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2.5 font-mono text-sm text-text-primary transition-colors placeholder:text-text-muted/50 focus:border-yellow focus:outline-none"
               />
             </div>
 
             {/* Label */}
             <div>
-              <label className="text-xs text-text-muted block mb-1.5">Label (optional)</label>
+              <label className="text-xs text-text-muted block mb-1.5">{text.label}</label>
               <input
                 type="text"
                 value={formData.label}
                 onChange={(e) => setFormData((f) => ({ ...f, label: e.target.value }))}
-                placeholder="e.g. Main Account"
-                className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted/50 focus:border-yellow focus:outline-none transition-colors"
+                placeholder={text.labelPlaceholder}
+                className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary transition-colors placeholder:text-text-muted/50 focus:border-yellow focus:outline-none"
               />
             </div>
 
             {/* Hint */}
             <p className="text-[11px] text-text-muted leading-relaxed">
-              Only <span className="text-yellow font-medium">read-only</span> API permissions are required.
-              Your keys are stored locally in SQLite and never sent to any third-party server.
+              {text.readOnlyHintPrefix} <span className="text-yellow font-medium">{text.readOnly}</span>
+              {text.readOnlyHintSuffix}
             </p>
 
             {/* Actions */}
@@ -207,7 +216,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-bg-primary bg-gradient-to-r from-yellow to-yellow/80 rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className="flex items-center gap-2 rounded-lg bg-yellow px-5 py-2.5 text-sm font-semibold text-[#08111D] transition-all duration-200 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? (
                   <svg className="animate-spin w-4 h-4" viewBox="0 0 16 16" fill="none">
@@ -215,14 +224,14 @@ export default function SettingsPage() {
                     <path d="M14 8a6 6 0 00-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
                 ) : null}
-                {submitting ? "Connecting..." : "Connect Exchange"}
+                {submitting ? text.connecting : text.connect}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2.5 text-sm text-text-secondary border border-border rounded-lg hover:border-text-muted hover:text-text-primary transition-all duration-200"
+                className="rounded-lg border border-border px-4 py-2.5 text-sm text-text-secondary transition-all duration-200 hover:border-text-muted hover:text-text-primary"
               >
-                Cancel
+                {dictionary.common.cancel}
               </button>
             </div>
           </form>
@@ -233,30 +242,30 @@ export default function SettingsPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-bg-secondary rounded-[14px] border border-border p-5 animate-pulse">
+            <div key={i} className="trading-panel animate-pulse p-5">
               <div className="h-10 bg-bg-tertiary rounded-lg w-1/3" />
               <div className="h-4 bg-bg-tertiary rounded mt-4 w-1/2" />
             </div>
           ))}
         </div>
       ) : exchanges.length === 0 ? (
-        <div className="bg-bg-secondary rounded-[14px] border border-border border-dashed p-12 text-center">
+        <div className="trading-panel border-dashed p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-bg-tertiary border border-border flex items-center justify-center">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-text-muted">
               <path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               <path d="M12 22V12M3 7l9 5 9-5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
             </svg>
           </div>
-          <h3 className="text-sm font-medium text-text-primary mb-1">No exchanges connected</h3>
-          <p className="text-xs text-text-muted mb-4">Add your exchange API key to start importing trades</p>
+          <h3 className="text-sm font-medium text-text-primary mb-1">{text.emptyTitle}</h3>
+          <p className="text-xs text-text-muted mb-4">{text.emptySubtitle}</p>
           <button
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-bg-primary bg-gradient-to-r from-yellow to-yellow/80 rounded-lg hover:brightness-110 transition-all duration-200"
+            className="inline-flex items-center gap-2 rounded-lg bg-yellow px-4 py-2 text-sm font-semibold text-[#08111D] transition-all duration-200 hover:brightness-110"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            Add Your First Exchange
+            {text.addFirst}
           </button>
         </div>
       ) : (

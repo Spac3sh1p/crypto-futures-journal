@@ -37,6 +37,16 @@ export interface RawTrade {
   fundingFee: number;
 }
 
+export interface RawAccountFlow {
+  externalId: string;
+  type: string;
+  asset: string;
+  amount: number;
+  symbol: string | null;
+  info: string | null;
+  time: Date;
+}
+
 export interface SyncResult {
   success: boolean;
   tradesAdded: number;

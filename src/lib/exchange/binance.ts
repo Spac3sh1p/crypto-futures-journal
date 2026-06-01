@@ -1,5 +1,5 @@
 import ccxt from "ccxt";
-import type { ExchangeCredentials, RawTrade, SyncResult } from "./types";
+import type { ExchangeCredentials, RawAccountFlow, RawTrade, SyncResult } from "./types";
 
 interface BinanceMarket {
   id?: string;
@@ -13,7 +13,13 @@ interface BinanceMarket {
 
 interface BinanceIncomeRow {
   symbol?: string;
+  incomeType?: string;
+  income?: number | string;
+  asset?: string;
+  info?: string;
   time?: number | string;
+  tranId?: number | string;
+  tradeId?: number | string;
 }
 
 interface BinanceFill {
@@ -82,6 +88,7 @@ interface BinancePosition {
 
 const INCOME_PAGE_LIMIT = 1000;
 const MAX_INCOME_PAGES = 10;
+const MAX_INCOME_WINDOW_MS = 89 * 24 * 60 * 60 * 1000;
 const POSITION_QTY_EPSILON = 1e-9;
 
 function isUsdtLinearSwapMarket(market: BinanceMarket | undefined): market is UsdtLinearSwapMarket {
@@ -144,6 +151,79 @@ async function discoverTradedUsdtFuturesSymbols(
     .map((marketId) => marketSymbolFromId(exchange, markets, marketId))
     .filter((symbol): symbol is string => !!symbol)
     .sort();
+}
+
+async function fetchIncomeRows(
+  exchange: BinanceExchangeClient,
+  sinceTs: number,
+  endTime = Date.now()
+): Promise<BinanceIncomeRow[]> {
+  const rows: BinanceIncomeRow[] = [];
+
+  for (let windowStart = sinceTs; windowStart <= endTime; windowStart += MAX_INCOME_WINDOW_MS + 1) {
+    const windowEnd = Math.min(endTime, windowStart + MAX_INCOME_WINDOW_MS);
+    rows.push(...await fetchIncomeRowsWindow(exchange, windowStart, windowEnd));
+  }
+
+  return rows;
+}
+
+async function fetchIncomeRowsWindow(
+  exchange: BinanceExchangeClient,
+  startTime: number,
+  endTime: number
+): Promise<BinanceIncomeRow[]> {
+  const rows: BinanceIncomeRow[] = [];
+  let cursor = startTime;
+
+  for (let page = 0; page < MAX_INCOME_PAGES; page++) {
+    const pageRows = await exchange.fapiPrivateGetIncome({
+      startTime: cursor,
+      endTime,
+      limit: INCOME_PAGE_LIMIT,
+    });
+
+    if (pageRows.length === 0) break;
+    rows.push(...pageRows);
+
+    let latestTime = cursor;
+    for (const row of pageRows) {
+      const rowTime = Number(row.time);
+      if (Number.isFinite(rowTime) && rowTime > latestTime) {
+        latestTime = rowTime;
+      }
+    }
+
+    if (pageRows.length < INCOME_PAGE_LIMIT || latestTime <= cursor) break;
+    cursor = latestTime + 1;
+  }
+
+  return rows;
+}
+
+function accountFlowFromIncomeRow(row: BinanceIncomeRow): RawAccountFlow | null {
+  const type = String(row.incomeType || "").trim();
+  const amountRaw = String(row.income ?? "");
+  const amount = Number(amountRaw);
+  const time = Number(row.time);
+
+  if (!type || !Number.isFinite(amount) || !Number.isFinite(time)) {
+    return null;
+  }
+
+  const symbol = row.symbol?.trim() || "";
+  const tradeId = String(row.tradeId ?? "");
+  const tranId = String(row.tranId ?? time);
+
+  return {
+    externalId: `binance_income_${type}_${tranId}_${tradeId}_${amountRaw}`,
+    type,
+    amount,
+    asset: String(row.asset || "USDT"),
+    symbol: symbol || null,
+    info: row.info ?? null,
+    time: new Date(time),
+  };
 }
 
 function normalizedFillSymbol(fill: BinanceFill): string {
@@ -401,6 +481,26 @@ export async function fetchBinanceTrades(
   }
 
   return aggregateBinancePositionFills(fills);
+}
+
+export async function fetchBinanceAccountFlows(
+  credentials: ExchangeCredentials,
+  since?: Date
+): Promise<RawAccountFlow[]> {
+  const exchange = new ccxt.binance({
+    apiKey: credentials.apiKey,
+    secret: credentials.apiSecret,
+    enableRateLimit: true,
+    options: { defaultType: "future" },
+  }) as unknown as BinanceExchangeClient;
+
+  const sinceTs = since ? since.getTime() : Date.now() - 365 * 24 * 60 * 60 * 1000;
+  const rows = await fetchIncomeRows(exchange, sinceTs);
+
+  return rows
+    .map(accountFlowFromIncomeRow)
+    .filter((flow): flow is RawAccountFlow => !!flow)
+    .sort((a, b) => a.time.getTime() - b.time.getTime() || a.externalId.localeCompare(b.externalId));
 }
 
 export async function syncBinance(

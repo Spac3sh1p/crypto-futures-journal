@@ -10,10 +10,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { InfoHint } from "@/components/ui/InfoHint";
+import { useI18n } from "@/components/i18n/LanguageProvider";
 
 interface DataPoint {
   date: string;
   count: number;
+  win?: number;
+  loss?: number;
 }
 
 function formatAxisDate(date: string): string {
@@ -22,44 +25,53 @@ function formatAxisDate(date: string): string {
 }
 
 export function TradeCountChart({ data }: { data: DataPoint[] }) {
+  const { dictionary } = useI18n();
+  const text = dictionary.performance.tradeCount;
   const totalTrades = data.reduce((sum, point) => sum + point.count, 0);
+  const hasSplit = data.some((point) => point.win !== undefined || point.loss !== undefined);
 
   return (
-    <div className="bg-bg-secondary rounded-[14px] p-5 border border-border">
+    <div className="trading-panel p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5">
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.16em] text-yellow">
-              Trade Count
+            <h3 className="terminal-section-title">
+              {text.title}
             </h3>
-            <InfoHint label="Number of closed aggregate trades grouped by exit date." />
+            <InfoHint label={text.info} />
           </div>
-          <p className="mt-1 text-xs font-medium text-text-muted">Closed trades per day</p>
+          <p className="mt-1 text-xs font-medium text-text-muted">{text.subtitle}</p>
+          {hasSplit && (
+            <div className="mt-3 flex items-center gap-4 text-xs font-medium text-text-secondary">
+              <span className="inline-flex items-center gap-1.5"><span className="h-2 w-5 rounded-sm bg-green" />{dictionary.common.win}</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2 w-5 rounded-sm bg-red" />{dictionary.common.loss}</span>
+            </div>
+          )}
         </div>
         <div className="font-mono text-sm font-semibold text-text-primary tabular-nums">
-          {totalTrades} trades
+          {totalTrades} {text.totalSuffix}
         </div>
       </div>
       {data.length === 0 ? (
-        <div className="flex h-[160px] items-center justify-center rounded border border-border-light bg-bg-primary/30 text-sm font-medium text-text-muted">
-          No closed trades in this range.
+        <div className="flex h-[240px] items-center justify-center rounded-lg border border-border-light bg-bg-primary/45 text-sm font-medium text-text-muted">
+          {text.empty}
         </div>
       ) : (
         <div className="-mx-2 overflow-x-auto px-2">
-          <div className="h-[160px] min-w-[640px] md:min-w-0">
+          <div className="h-[240px] min-w-[480px] md:min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                <CartesianGrid strokeDasharray="3 5" stroke="#26364B" strokeOpacity={0.62} vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fill: "#64748B", fontSize: 11, fontWeight: 500 }}
-                  axisLine={{ stroke: "#334155" }}
+                  tick={{ fill: "var(--text-muted)", fontSize: 11, fontWeight: 500 }}
+                  axisLine={{ stroke: "#26364B" }}
                   tickLine={false}
                   tickFormatter={formatAxisDate}
                   minTickGap={28}
                 />
                 <YAxis
-                  tick={{ fill: "#64748B", fontSize: 11, fontWeight: 500 }}
+                  tick={{ fill: "var(--text-muted)", fontSize: 11, fontWeight: 500 }}
                   axisLine={false}
                   tickLine={false}
                   allowDecimals={false}
@@ -67,17 +79,23 @@ export function TradeCountChart({ data }: { data: DataPoint[] }) {
                 />
                 <Tooltip
                   contentStyle={{
-                    background: "#1E293B",
-                    border: "1px solid #334155",
-                    borderRadius: 10,
+                    background: "#0C1522",
+                    border: "1px solid #2B3D55",
+                    borderRadius: 8,
                     fontSize: 12,
                     boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
                   }}
-                  labelStyle={{ color: "#94A3B8", fontWeight: 600 }}
-                  itemStyle={{ color: "#8B5CF6" }}
-                  cursor={{ fill: "rgba(139, 92, 246, 0.1)" }}
+                  labelStyle={{ color: "#BBC7D6", fontWeight: 600 }}
+                  cursor={{ fill: "rgba(125, 180, 255, 0.08)" }}
                 />
-                <Bar dataKey="count" name="Closed trades" fill="#8B5CF6" radius={[4, 4, 0, 0]} opacity={0.85} />
+                {hasSplit ? (
+                  <>
+                    <Bar dataKey="win" name={dictionary.common.win} fill="#22C38E" radius={[4, 4, 0, 0]} opacity={0.92} />
+                    <Bar dataKey="loss" name={dictionary.common.loss} fill="#FF5A5F" radius={[4, 4, 0, 0]} opacity={0.92} />
+                  </>
+                ) : (
+                  <Bar dataKey="count" name={text.tooltipName} fill="#F5B31A" radius={[4, 4, 0, 0]} opacity={0.88} />
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>

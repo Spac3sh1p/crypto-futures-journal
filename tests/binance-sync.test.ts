@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mockCcxt = vi.hoisted(() => {
   const loadMarkets = vi.fn();
@@ -30,7 +30,7 @@ vi.mock("ccxt", () => ({
   },
 }));
 
-import { fetchBinanceTrades } from "@/lib/exchange/binance";
+import { fetchBinanceAccountFlows, fetchBinanceTrades } from "@/lib/exchange/binance";
 
 describe("fetchBinanceTrades", () => {
   beforeEach(() => {
@@ -246,5 +246,125 @@ describe("fetchBinanceTrades", () => {
     expect(trades[0].exitPrice).toBeCloseTo(0.1233333333);
     expect(trades[0].entryTime.toISOString()).toBe("2026-05-01T00:00:00.000Z");
     expect(trades[0].exitTime.toISOString()).toBe("2026-05-01T00:02:00.000Z");
+  });
+});
+
+describe("fetchBinanceAccountFlows", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useRealTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("maps Binance income history into account flows including transfers and trading income", async () => {
+    const since = new Date("2026-05-01T00:00:00Z");
+    mockCcxt.fapiPrivateGetIncome.mockResolvedValue([
+      {
+        symbol: null,
+        incomeType: "TRANSFER",
+        income: "900.00000000",
+        asset: "USDT",
+        info: "deposit",
+        time: since.getTime(),
+        tranId: "transfer-1",
+        tradeId: "",
+      },
+      {
+        symbol: "BTCUSDT",
+        incomeType: "REALIZED_PNL",
+        income: "120.50000000",
+        asset: "USDT",
+        info: "",
+        time: since.getTime() + 1000,
+        tranId: "pnl-1",
+        tradeId: "trade-1",
+      },
+      {
+        symbol: "BTCUSDT",
+        incomeType: "COMMISSION",
+        income: "-2.50000000",
+        asset: "USDT",
+        info: "",
+        time: since.getTime() + 2000,
+        tranId: "fee-1",
+        tradeId: "trade-1",
+      },
+    ]);
+
+    const flows = await fetchBinanceAccountFlows(
+      { apiKey: "key", apiSecret: "secret", exchange: "binance" },
+      since
+    );
+
+    expect(mockCcxt.fapiPrivateGetIncome).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startTime: since.getTime(),
+        limit: 1000,
+      })
+    );
+    expect(flows).toEqual([
+      {
+        externalId: "binance_income_TRANSFER_transfer-1__900.00000000",
+        type: "TRANSFER",
+        amount: 900,
+        asset: "USDT",
+        symbol: null,
+        info: "deposit",
+        time: new Date(since.getTime()),
+      },
+      {
+        externalId: "binance_income_REALIZED_PNL_pnl-1_trade-1_120.50000000",
+        type: "REALIZED_PNL",
+        amount: 120.5,
+        asset: "USDT",
+        symbol: "BTCUSDT",
+        info: "",
+        time: new Date(since.getTime() + 1000),
+      },
+      {
+        externalId: "binance_income_COMMISSION_fee-1_trade-1_-2.50000000",
+        type: "COMMISSION",
+        amount: -2.5,
+        asset: "USDT",
+        symbol: "BTCUSDT",
+        info: "",
+        time: new Date(since.getTime() + 2000),
+      },
+    ]);
+  });
+
+  it("splits long account-flow sync ranges into Binance income windows", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-31T00:00:00Z"));
+    mockCcxt.fapiPrivateGetIncome.mockResolvedValue([]);
+
+    const since = new Date("2025-05-31T00:00:00Z");
+    await fetchBinanceAccountFlows(
+      { apiKey: "key", apiSecret: "secret", exchange: "binance" },
+      since
+    );
+
+    const calls = mockCcxt.fapiPrivateGetIncome.mock.calls.map(([params]) => params);
+    expect(calls.length).toBeGreaterThan(1);
+    expect(calls[0]).toEqual(
+      expect.objectContaining({
+        startTime: since.getTime(),
+        limit: 1000,
+      })
+    );
+    expect(calls.at(-1)).toEqual(
+      expect.objectContaining({
+        endTime: new Date("2026-05-31T00:00:00Z").getTime(),
+      })
+    );
+
+    for (const params of calls) {
+      expect(Number(params.endTime) - Number(params.startTime)).toBeLessThanOrEqual(
+        89 * 24 * 60 * 60 * 1000
+      );
+    }
   });
 });

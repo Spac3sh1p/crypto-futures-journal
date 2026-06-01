@@ -29,6 +29,68 @@ export function buildCumulativePnlSeries(
   });
 }
 
+export interface AccountFlowLike {
+  type: string;
+  asset: string;
+  amount: number;
+  time: Date;
+}
+
+export interface AccountFlowPnlPoint {
+  date: string;
+  value: number;
+  returnPct: number;
+  netDeposits: number;
+}
+
+const TRADING_FLOW_TYPES = new Set(["REALIZED_PNL", "COMMISSION", "FUNDING_FEE"]);
+
+export function buildAccountFlowPnlSeries(
+  flows: AccountFlowLike[],
+  visibleStart?: Date
+): AccountFlowPnlPoint[] {
+  const sorted = [...flows]
+    .filter((flow) => flow.asset === "USDT")
+    .sort((a, b) => a.time.getTime() - b.time.getTime());
+
+  const daily = new Map<string, { tradingPnl: number; transfer: number }>();
+  for (const flow of sorted) {
+    const date = format(flow.time, "yyyy-MM-dd");
+    const bucket = daily.get(date) ?? { tradingPnl: 0, transfer: 0 };
+
+    if (flow.type === "TRANSFER") {
+      bucket.transfer += flow.amount;
+    } else if (TRADING_FLOW_TYPES.has(flow.type)) {
+      bucket.tradingPnl += flow.amount;
+    }
+
+    daily.set(date, bucket);
+  }
+
+  let cumulativeTradingPnl = 0;
+  let netDeposits = 0;
+  const startDate = visibleStart ? format(visibleStart, "yyyy-MM-dd") : null;
+  const points: AccountFlowPnlPoint[] = [];
+
+  for (const [date, bucket] of Array.from(daily.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+    netDeposits += bucket.transfer;
+    cumulativeTradingPnl += bucket.tradingPnl;
+
+    if (startDate && date < startDate) {
+      continue;
+    }
+
+    points.push({
+      date,
+      value: cumulativeTradingPnl,
+      returnPct: netDeposits > 0 ? (cumulativeTradingPnl / netDeposits) * 100 : 0,
+      netDeposits,
+    });
+  }
+
+  return points;
+}
+
 export function buildDailyPnlSeries(
   trades: Trade[]
 ): { date: string; pnl: number }[] {

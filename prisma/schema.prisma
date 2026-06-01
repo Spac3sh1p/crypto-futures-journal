@@ -19,6 +19,7 @@ model Exchange {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   trades    Trade[]
+  accountFlows AccountFlow[]
 }
 
 // Core trade record - one row per closed position
@@ -110,4 +111,27 @@ model SyncLog {
   message     String?
   startedAt   DateTime @default(now())
   completedAt DateTime?
+}
+
+// Account-level income and transfer history from exchange APIs.
+// Used to distinguish trading return from deposits/withdrawals.
+model AccountFlow {
+  id         String   @id @default(cuid())
+  exchangeId String
+  exchange   Exchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+
+  externalId String
+  type       String   // "TRANSFER" | "REALIZED_PNL" | "COMMISSION" | "FUNDING_FEE" | ...
+  asset      String   // usually "USDT" for Binance USD-M Futures
+  amount     Float
+  symbol     String?
+  info       String?
+  time       DateTime
+  createdAt  DateTime @default(now())
+
+  @@unique([exchangeId, externalId])
+  @@index([exchangeId])
+  @@index([time])
+  @@index([type])
+  @@index([asset])
 }

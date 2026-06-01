@@ -1,7 +1,14 @@
-export function formatDuration(seconds: number): string {
+import type { Locale } from "@/lib/i18n";
+
+export function formatDuration(seconds: number, locale: Locale = "en"): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
+  if (locale === "zh") {
+    if (h > 0) return `${h}小时 ${m}分 ${s}秒`;
+    if (m > 0) return `${m}分 ${s}秒`;
+    return `${s}秒`;
+  }
   if (h > 0) return `${h}h ${m}m ${s}s`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
@@ -27,9 +34,11 @@ export interface DateTimeParts {
   full: string;
 }
 
-export function formatTradeDateTimeParts(input: string | Date): DateTimeParts {
+export function formatTradeDateTimeParts(input: string | Date, locale: Locale = "en"): DateTimeParts {
   const d = typeof input === "string" ? new Date(input) : input;
   const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = String(d.getFullYear());
   const mon = d.toLocaleString("en", { month: "short" });
   const yr = String(d.getFullYear()).slice(2);
   const time = d.toLocaleTimeString("en-US", {
@@ -38,7 +47,7 @@ export function formatTradeDateTimeParts(input: string | Date): DateTimeParts {
     second: "2-digit",
     hour12: false,
   });
-  const date = `${day}/${mon}/${yr}`;
+  const date = locale === "zh" ? `${year}/${month}/${day}` : `${day}/${mon}/${yr}`;
   return {
     date,
     time,

@@ -19,6 +19,45 @@ function fail(name, details) {
   return { ok: false, name, details };
 }
 
+async function waitForAnyText(page, texts, timeout = 45_000) {
+  const deadline = Date.now() + timeout;
+  const fallbackTexts = [
+    "Total PnL",
+    "Recent Trades",
+    "\u603b\u76c8\u4e8f",
+    "\u6700\u8fd1\u4ea4\u6613",
+    "\u4ea4\u6613\u8bb0\u5f55",
+  ];
+  for (;;) {
+    for (const text of texts) {
+      const locator = page.getByText(text).first();
+      if (await locator.isVisible().catch(() => false)) return;
+    }
+    const bodyText = await page.locator("body").innerText({ timeout: 1_000 }).catch(() => "");
+    if ([...texts, ...fallbackTexts].some((text) => bodyText.includes(text))) return;
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out waiting for any text: ${texts.join(", ")}`);
+    }
+    await page.waitForTimeout(250);
+  }
+}
+
+function rowToggleLocator(page, state) {
+  const expandedState = state === "expand" ? "false" : "true";
+  return page.locator(`button[aria-expanded="${expandedState}"]`);
+}
+
+  /* if (state === "expand") {
+    return page.locator(
+      'button[aria-label^="Expand"], button[aria-label^="展开"], button:has-text("Details"), button:has-text("查看详情")'
+    );
+  }
+  return page.locator(
+    'button[aria-label^="Collapse"], button[aria-label^="收起"], button:has-text("Collapse"), button:has-text("收起详情")'
+  );
+}
+*/
+
 await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch();
@@ -28,26 +67,27 @@ try {
   for (const viewport of viewports) {
     const page = await browser.newPage({ viewport });
     await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    await page.waitForSelector("text=Trade History", { timeout: 20_000 });
+    await waitForAnyText(page, ["Trade History", "交易记录", "Recent Trades", "最近交易", "账户表现总览"]);
 
-    const expandButtons = page.locator('button[aria-label^="Expand"]');
+    const expandButtons = rowToggleLocator(page, "expand");
     const expandCount = await expandButtons.count();
     if (expandCount === 0) {
       results.push(fail(`${viewport.name}: expandable trade row`, "No expandable trade rows found."));
     } else {
       await expandButtons.first().scrollIntoViewIfNeeded();
       await expandButtons.first().click();
-      await page.locator('button[aria-label^="Collapse"]').first().waitFor({ state: "visible", timeout: 5_000 });
-      const detailHeading = page.getByText("Chart Summary").first();
-      await detailHeading.waitFor({ state: "attached", timeout: 5_000 });
-      await detailHeading.scrollIntoViewIfNeeded();
+      await rowToggleLocator(page, "collapse").first().waitFor({ state: "visible", timeout: 5_000 });
+      await waitForAnyText(page, ["Chart Summary", "K线复盘"], 5_000);
+      await page.getByText("K线复盘").or(page.getByText("Chart Summary")).first().scrollIntoViewIfNeeded();
       await page.waitForTimeout(1_500);
       results.push(pass(`${viewport.name}: expandable trade row`, `${expandCount} row controls found; detail panel opened.`));
     }
 
     const metrics = await page.evaluate(() => {
       const root = document.documentElement;
-      const chart = document.querySelector('svg[role="img"][aria-label*="candlestick"]');
+      const chart = document.querySelector(
+        'svg[role="img"][aria-label*="candlestick"], svg[role="img"][aria-label*="K"]'
+      );
       const chartBox = chart?.getBoundingClientRect();
       const loadingOrEmpty = document.querySelector('[role="status"]');
       const table = document.querySelector("table");

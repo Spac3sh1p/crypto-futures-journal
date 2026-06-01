@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/i18n/LanguageProvider";
 
 interface Exchange {
   id: string;
@@ -21,6 +22,8 @@ export function ExchangeCard({
   onDelete: (id: string) => void;
   onSync: (id: string) => void;
 }) {
+  const { dictionary, locale } = useI18n();
+  const text = dictionary.settings;
   const [syncing, setSyncing] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -31,7 +34,7 @@ export function ExchangeCard({
   };
 
   const handleDelete = async () => {
-    if (!confirm("Delete this exchange and all associated trades?")) return;
+    if (!confirm(text.deleteConfirm)) return;
     setDeleting(true);
     await onDelete(exchange.id);
     setDeleting(false);
@@ -39,19 +42,16 @@ export function ExchangeCard({
 
   const displayName = exchange.label || exchange.name.charAt(0).toUpperCase() + exchange.name.slice(1);
   const lastSyncText = exchange.lastSync
-    ? new Date(exchange.lastSync).toLocaleString()
-    : "Never";
+    ? new Date(exchange.lastSync).toLocaleString(locale === "zh" ? "zh-CN" : "en-US")
+    : dictionary.common.never;
 
   return (
-    <div className="bg-bg-secondary rounded-[14px] border border-border p-5 relative overflow-hidden">
-      {/* Top accent */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-yellow to-purple" />
-
+    <div className="trading-panel p-5">
       <div className="flex items-start justify-between">
         {/* Left: Info */}
         <div className="flex items-center gap-3">
           {/* Exchange icon */}
-          <div className="w-10 h-10 rounded-lg bg-bg-tertiary border border-border flex items-center justify-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-bg-tertiary">
             {exchange.name === "bybit" ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="#F59E0B" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -84,7 +84,7 @@ export function ExchangeCard({
           <button
             onClick={handleSync}
             disabled={syncing || !exchange.isActive}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-bg-primary bg-gradient-to-r from-yellow to-yellow/80 rounded-lg hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+            className="flex items-center gap-1.5 rounded-lg bg-yellow px-3 py-1.5 text-xs font-semibold text-[#08111D] transition-all duration-200 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {syncing ? (
               <svg className="animate-spin w-3 h-3" viewBox="0 0 16 16" fill="none">
@@ -97,27 +97,27 @@ export function ExchangeCard({
                 <path d="M9 1v2.5h2.5M3 11V8.5H.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             )}
-            {syncing ? "Syncing..." : "Sync"}
+            {syncing ? dictionary.common.syncing : dictionary.common.sync}
           </button>
 
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="px-3 py-1.5 text-xs font-medium text-red border border-red/30 rounded-lg hover:bg-red/10 disabled:opacity-40 transition-all duration-200"
+            className="rounded-lg border border-red/30 px-3 py-1.5 text-xs font-semibold text-red transition-all duration-200 hover:bg-red/10 disabled:opacity-40"
           >
-            {deleting ? "..." : "Delete"}
+            {deleting ? dictionary.common.deleting : dictionary.common.delete}
           </button>
         </div>
       </div>
 
       {/* Stats row */}
-      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border-light">
+      <div className="mt-4 flex items-center gap-4 border-t border-border-light pt-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-text-muted uppercase tracking-wider">Trades</span>
+          <span className="text-[10px] text-text-muted uppercase tracking-wider">{text.trades}</span>
           <span className="text-xs font-mono font-medium text-text-primary">{exchange._count.trades}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-text-muted uppercase tracking-wider">Last Sync</span>
+          <span className="text-[10px] text-text-muted uppercase tracking-wider">{text.lastSync}</span>
           <span className="text-xs font-mono text-text-secondary">{lastSyncText}</span>
         </div>
       </div>

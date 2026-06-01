@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { MiniKlineChart } from "./MiniKlineChart";
+import { useI18n } from "@/components/i18n/LanguageProvider";
+import { template } from "@/lib/i18n";
 import { formatMoney, formatTradeDateTimeParts } from "@/lib/formatters";
 
 interface TradeDetail {
@@ -23,19 +25,17 @@ interface TradeDetail {
 }
 
 // Predefined tag options for quick selection
-const PRESET_TAGS = [
-  "Breakout", "Scalp", "Swing", "Reversal", "Trend",
-  "News", "Overtraded", "FOMO", "Revenge", "Perfect Setup",
-  "Early Exit", "Late Entry", "Stopped Out", "TP Hit",
-];
+const PRESET_TAG_KEYS = [
+  "breakout", "scalp", "swing", "reversal", "trend",
+  "news", "overtraded", "fomo", "revenge", "perfectSetup",
+  "earlyExit", "lateEntry", "stoppedOut", "tpHit",
+] as const;
 
-const DETAIL_TABS = [
-  { id: "chart" as const, label: "Chart Summary" },
-  { id: "fills" as const, label: "Fills" },
-  { id: "notes" as const, label: "Notes" },
-];
+const DETAIL_TABS = ["chart", "fills", "notes"] as const;
 
 export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
+  const { dictionary, locale } = useI18n();
+  const text = dictionary.tradeDetail;
   const [activeTab, setActiveTab] = useState<"chart" | "fills" | "notes">("chart");
   const [statusMessage, setStatusMessage] = useState<{ text: string; tone: "success" | "error" } | null>(null);
 
@@ -54,8 +54,8 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
   const [notesDraft, setNotesDraft] = useState(trade.notes || "");
   const [noteSaving, setNoteSaving] = useState(false);
 
-  const entryDateTime = formatTradeDateTimeParts(trade.entryTime);
-  const exitDateTime = formatTradeDateTimeParts(trade.exitTime);
+  const entryDateTime = formatTradeDateTimeParts(trade.entryTime, locale);
+  const exitDateTime = formatTradeDateTimeParts(trade.exitTime, locale);
   const tabId = (tab: string) => `trade-${trade.id}-${tab}-tab`;
   const panelId = (tab: string) => `trade-${trade.id}-${tab}-panel`;
 
@@ -75,13 +75,13 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
         throw new Error(json.message || "Failed to save tags");
       }
       setTags(newTags);
-      setStatusMessage({ text: "Tags saved", tone: "success" });
+      setStatusMessage({ text: text.tagsSaved, tone: "success" });
     } catch {
-      setStatusMessage({ text: "Could not save tags", tone: "error" });
+      setStatusMessage({ text: text.tagsSaveFailed, tone: "error" });
     } finally {
       setTagSaving(false);
     }
-  }, [trade.id]);
+  }, [text.tagsSaveFailed, text.tagsSaved, trade.id]);
 
   // Add a tag
   const addTag = useCallback(async (tag: string) => {
@@ -115,35 +115,35 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
       }
       setNotes(notesDraft);
       setEditingNotes(false);
-      setStatusMessage({ text: "Notes saved", tone: "success" });
+      setStatusMessage({ text: text.notesSaved, tone: "success" });
     } catch {
-      setStatusMessage({ text: "Could not save notes", tone: "error" });
+      setStatusMessage({ text: text.notesSaveFailed, tone: "error" });
     } finally {
       setNoteSaving(false);
     }
-  }, [trade.id, notesDraft]);
+  }, [notesDraft, text.notesSaveFailed, text.notesSaved, trade.id]);
 
   return (
-    <div className="bg-bg-primary border-t border-border">
+    <div className="border-t border-border bg-[#08111D]">
       {/* Tabs */}
-      <div className="flex gap-4 px-5 border-b border-border" role="tablist">
+      <div className="flex gap-5 border-b border-border px-5" role="tablist">
         {DETAIL_TABS.map((tab) => (
           <button
-            key={tab.id}
-            id={tabId(tab.id)}
+            key={tab}
+            id={tabId(tab)}
             type="button"
             role="tab"
-            aria-selected={activeTab === tab.id}
-            aria-controls={panelId(tab.id)}
-            tabIndex={activeTab === tab.id ? 0 : -1}
-            onClick={() => setActiveTab(tab.id)}
-            className={`border-b-2 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 ${
-              activeTab === tab.id
+            aria-selected={activeTab === tab}
+            aria-controls={panelId(tab)}
+            tabIndex={activeTab === tab ? 0 : -1}
+            onClick={() => setActiveTab(tab)}
+            className={`border-b-2 py-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 ${
+              activeTab === tab
                 ? "border-yellow text-yellow"
                 : "border-transparent text-text-muted hover:text-text-secondary"
             }`}
           >
-            {tab.label}
+            {text.tabs[tab]}
           </button>
         ))}
       </div>
@@ -184,29 +184,29 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
           <div className="w-full flex-shrink-0 space-y-3 xl:w-72">
             {/* Funding & Fees */}
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded border border-border bg-bg-secondary px-3 py-2">
-                <span className="block font-medium text-text-secondary">Total Funding</span>
+              <div className="rounded-lg border border-border bg-bg-tertiary/82 px-3 py-3">
+                <span className="block font-medium text-text-secondary">{text.totalFunding}</span>
                 <span className={`mt-1 block text-right font-mono font-semibold tabular-nums ${trade.fundingFee >= 0 ? "text-green" : "text-red"}`}>
                   {formatMoney(trade.fundingFee)}
                 </span>
               </div>
-              <div className="rounded border border-border bg-bg-secondary px-3 py-2">
-                <span className="block font-medium text-text-secondary">Fees</span>
+              <div className="rounded-lg border border-border bg-bg-tertiary/82 px-3 py-3">
+                <span className="block font-medium text-text-secondary">{text.fees}</span>
                 <span className="mt-1 block text-right font-mono font-semibold tabular-nums text-red">{formatMoney(-Math.abs(trade.fee))}</span>
               </div>
             </div>
 
             {/* Tags - Interactive */}
-            <div className="bg-bg-secondary rounded p-3 border border-border">
+            <div className="rounded-lg border border-border bg-bg-tertiary/82 p-3">
               <div className="flex justify-between items-center text-xs font-medium">
-                <span className="text-text-secondary">Tags</span>
+                <span className="text-text-secondary">{text.tags}</span>
                 <button
                   type="button"
                   onClick={() => setShowTagManager(!showTagManager)}
-                  aria-label="Manage trade tags"
+                  aria-label={text.manageTags}
                   aria-pressed={showTagManager}
                   className="rounded text-text-muted transition-colors hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
-                  title="Manage tags"
+                  title={text.manageTags}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="3" />
@@ -219,11 +219,11 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {tags.map((tag) => (
-                      <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-bg-tertiary rounded text-[11px] text-text-secondary border border-border-light">
+                      <span key={tag} className="inline-flex items-center gap-1 rounded border border-border-light bg-bg-primary px-2 py-0.5 text-[11px] text-text-secondary">
                         {tag}
                         <button
                           type="button"
-                          aria-label={`Remove ${tag} tag`}
+                          aria-label={template(text.removeTag, { tag })}
                           onClick={() => removeTag(tag)}
                           className="ml-0.5 text-text-muted transition-colors hover:text-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red/50"
                           disabled={tagSaving}
@@ -246,10 +246,10 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                         if (e.key === "Enter") addTag(newTag);
                         if (e.key === "Escape") { setShowTagInput(false); setNewTag(""); }
                       }}
-                      aria-label="New tag name"
-                      placeholder="Tag name..."
+                      aria-label={text.newTagAria}
+                      placeholder={text.tagNamePlaceholder}
                       autoFocus
-                      className="flex-1 bg-bg-tertiary border border-border rounded px-2 py-1 text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-yellow focus:outline-none"
+                      className="flex-1 rounded border border-border bg-bg-primary px-2 py-1 text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-yellow focus:outline-none"
                     />
                     <button
                       type="button"
@@ -257,11 +257,11 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                       disabled={!newTag.trim() || tagSaving}
                       className="px-2 py-1 text-[10px] font-medium text-bg-primary bg-yellow rounded hover:brightness-110 disabled:opacity-40 transition-all"
                     >
-                      {tagSaving ? "..." : "Add"}
+                      {tagSaving ? "..." : dictionary.common.add}
                     </button>
                     <button
                       type="button"
-                      aria-label="Cancel adding tag"
+                      aria-label={text.cancelAddTag}
                       onClick={() => { setShowTagInput(false); setNewTag(""); }}
                       className="px-1.5 py-1 text-[11px] text-text-muted hover:text-text-secondary"
                     >
@@ -274,22 +274,25 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                     onClick={() => setShowTagInput(true)}
                     className="text-xs font-medium text-text-secondary transition-colors hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
                   >
-                    + Add Tag
+                    {text.addTag}
                   </button>
                 )}
 
                 {/* Tag manager: preset quick-add */}
                 {showTagManager && (
                   <div className="mt-2 pt-2 border-t border-border-light">
-                    <span className="text-[11px] font-medium text-text-secondary uppercase tracking-wider">Quick Add</span>
+                    <span className="text-[11px] font-medium text-text-secondary uppercase tracking-wider">{text.quickAdd}</span>
                     <div className="flex flex-wrap gap-1 mt-1.5">
-                      {PRESET_TAGS.filter((t) => !tags.includes(t)).map((preset) => (
+                      {PRESET_TAG_KEYS
+                        .map((key) => text.presetTags[key])
+                        .filter((preset) => !tags.includes(preset))
+                        .map((preset) => (
                         <button
                           type="button"
                           key={preset}
                           onClick={() => addTag(preset)}
                           disabled={tagSaving}
-                          className="rounded border border-border-light bg-bg-tertiary px-2 py-0.5 text-[11px] font-medium text-text-secondary transition-all hover:border-yellow/40 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:opacity-40"
+                          className="rounded border border-border-light bg-bg-primary px-2 py-0.5 text-[11px] font-medium text-text-secondary transition-all hover:border-yellow/40 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:opacity-40"
                         >
                           {preset}
                         </button>
@@ -301,13 +304,13 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
             </div>
 
             {/* Notes - Interactive */}
-            <div className="bg-bg-secondary rounded p-3 border border-border">
+            <div className="rounded-lg border border-border bg-bg-tertiary/82 p-3">
               <div className="flex justify-between items-center text-xs font-medium">
-                <span className="text-text-secondary">Notes</span>
+                <span className="text-text-secondary">{text.notes}</span>
                 {notes && !editingNotes && (
                   <button
                     type="button"
-                    aria-label="Edit trade notes"
+                    aria-label={text.editNotes}
                     onClick={() => { setEditingNotes(true); setNotesDraft(notes); }}
                     className="rounded text-text-muted transition-colors hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
                   >
@@ -324,11 +327,11 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                     <textarea
                       value={notesDraft}
                       onChange={(e) => setNotesDraft(e.target.value)}
-                      placeholder="Write your trade notes here..."
-                      aria-label="Trade note"
+                      placeholder={text.notePlaceholder}
+                      aria-label={text.noteAria}
                       autoFocus
                       rows={4}
-                      className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-muted/50 focus:border-yellow focus:outline-none resize-none"
+                      className="w-full resize-none rounded-lg border border-border bg-bg-primary px-3 py-2 text-xs text-text-primary placeholder:text-text-muted/50 focus:border-yellow focus:outline-none"
                     />
                     <div className="flex items-center gap-2">
                       <button
@@ -337,14 +340,14 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                         disabled={noteSaving}
                         className="rounded-lg bg-yellow px-3 py-1.5 text-[11px] font-medium text-bg-primary transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:opacity-50"
                       >
-                        {noteSaving ? "Saving..." : "Save"}
+                        {noteSaving ? dictionary.common.saving : dictionary.common.save}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setEditingNotes(false); setNotesDraft(notes); }}
                         className="rounded-lg border border-border px-3 py-1.5 text-[11px] text-text-muted transition-colors hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
                       >
-                        Cancel
+                        {dictionary.common.cancel}
                       </button>
                     </div>
                   </div>
@@ -361,7 +364,7 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                     onClick={() => { setEditingNotes(true); setNotesDraft(""); }}
                     className="text-xs font-medium text-text-secondary transition-colors hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
                   >
-                    + Add Note
+                    {text.addNote}
                   </button>
                 )}
               </div>
@@ -378,26 +381,26 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
           className="overflow-x-auto p-4 text-sm text-text-muted"
         >
           <table className="w-full min-w-[560px] text-xs">
-            <caption className="sr-only">Synthetic open and close fill summary</caption>
+            <caption className="sr-only">{text.fillsCaption}</caption>
             <thead>
               <tr className="border-b border-border">
-                <th scope="col" className="text-left py-2 text-text-muted">Type</th>
-                <th scope="col" className="text-right py-2 text-text-muted">Price</th>
-                <th scope="col" className="text-right py-2 text-text-muted">Qty</th>
-                <th scope="col" className="text-right py-2 text-text-muted">Fee</th>
-                <th scope="col" className="text-right py-2 text-text-muted">Time</th>
+                <th scope="col" className="text-left py-2 text-text-muted">{dictionary.common.type}</th>
+                <th scope="col" className="text-right py-2 text-text-muted">{dictionary.common.price}</th>
+                <th scope="col" className="text-right py-2 text-text-muted">{dictionary.common.qty}</th>
+                <th scope="col" className="text-right py-2 text-text-muted">{dictionary.common.fee}</th>
+                <th scope="col" className="text-right py-2 text-text-muted">{dictionary.common.time}</th>
               </tr>
             </thead>
             <tbody>
               <tr className="border-b border-border-light">
-                <td className="py-2 text-green">Open</td>
+                <td className="py-2 text-green">{text.open}</td>
                 <td className="py-2 text-right font-mono">${trade.entryPrice.toFixed(4)}</td>
                 <td className="py-2 text-right font-mono">--</td>
                 <td className="py-2 text-right font-mono text-red">{formatMoney(-Math.abs(trade.fee * 0.5))}</td>
                 <td className="py-2 text-right font-mono">{entryDateTime.full}</td>
               </tr>
               <tr>
-                <td className="py-2 text-red">Close</td>
+                <td className="py-2 text-red">{text.close}</td>
                 <td className="py-2 text-right font-mono">${trade.exitPrice.toFixed(4)}</td>
                 <td className="py-2 text-right font-mono">--</td>
                 <td className="py-2 text-right font-mono text-red">{formatMoney(-Math.abs(trade.fee * 0.5))}</td>
@@ -415,17 +418,17 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
           aria-labelledby={tabId("notes")}
           className="p-4"
         >
-          <div className="bg-bg-secondary rounded p-4 border border-border min-h-[120px]">
+          <div className="min-h-[120px] rounded-lg border border-border bg-bg-tertiary/82 p-4">
             {editingNotes ? (
               <div className="space-y-3">
                 <textarea
                   value={notesDraft}
                   onChange={(e) => setNotesDraft(e.target.value)}
-                  placeholder="Write your trade notes, analysis, lessons learned..."
-                  aria-label="Trade note"
+                  placeholder={text.noteLongPlaceholder}
+                  aria-label={text.noteAria}
                   autoFocus
                   rows={5}
-                  className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted/50 focus:border-yellow focus:outline-none resize-none"
+                  className="w-full resize-none rounded-lg border border-border bg-bg-primary px-3 py-2 text-sm text-text-primary placeholder:text-text-muted/50 focus:border-yellow focus:outline-none"
                 />
                 <div className="flex items-center gap-2">
                   <button
@@ -434,14 +437,14 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                     disabled={noteSaving}
                     className="rounded-lg bg-yellow px-4 py-2 text-xs font-medium text-bg-primary transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:opacity-50"
                   >
-                    {noteSaving ? "Saving..." : "Save Notes"}
+                    {noteSaving ? dictionary.common.saving : text.saveNotes}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setEditingNotes(false); setNotesDraft(notes); }}
                     className="rounded-lg border border-border px-4 py-2 text-xs text-text-muted transition-colors hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
                   >
-                    Cancel
+                    {dictionary.common.cancel}
                   </button>
                 </div>
               </div>
@@ -458,7 +461,7 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                 onClick={() => { setEditingNotes(true); setNotesDraft(""); }}
                 className="text-sm font-medium text-text-secondary transition-colors hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
               >
-                Add Note
+                {text.addNotePlain}
               </button>
             )}
           </div>

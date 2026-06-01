@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { fetchBybitTrades, fetchBinanceTrades, fetchHyperliquidTrades } from "@/lib/exchange";
-import type { RawTrade } from "@/lib/exchange";
+import { fetchBinanceAccountFlows, fetchBybitTrades, fetchBinanceTrades, fetchHyperliquidTrades } from "@/lib/exchange";
+import type { RawAccountFlow, RawTrade } from "@/lib/exchange";
 import { requireAuth } from "@/lib/auth";
 import { decryptSecret } from "@/lib/crypto";
 
@@ -47,6 +47,12 @@ export async function POST(
     const since: Date = exchange.lastSync
       ? exchange.lastSync
       : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const existingAccountFlowCount = await prisma.accountFlow.count({
+      where: { exchangeId: id },
+    });
+    const accountFlowSince = existingAccountFlowCount > 0 && exchange.lastSync
+      ? exchange.lastSync
+      : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 
     // Create SyncLog entry with "running" status
     const syncLog = await prisma.syncLog.create({
@@ -60,6 +66,7 @@ export async function POST(
 
     // Fetch trades from exchange
     let rawTrades: RawTrade[] = [];
+    let rawAccountFlows: RawAccountFlow[] = [];
     const credentials = {
       apiKey: exchange.apiKey,
       apiSecret,
@@ -71,6 +78,7 @@ export async function POST(
         rawTrades = await fetchBybitTrades(credentials, since);
       } else if (exchange.name === "binance") {
         rawTrades = await fetchBinanceTrades(credentials, since);
+        rawAccountFlows = await fetchBinanceAccountFlows(credentials, accountFlowSince);
       } else if (exchange.name === "hyperliquid") {
         rawTrades = await fetchHyperliquidTrades(credentials, since);
       }
@@ -89,6 +97,8 @@ export async function POST(
     // Batch insert trades, skip duplicates via composite unique (exchangeId + externalId)
     let tradesAdded = 0;
     let insertErrors = 0;
+    let accountFlowsAdded = 0;
+    let accountFlowInsertErrors = 0;
 
     // Get existing externalIds for this exchange to skip duplicates
     const existingIds = new Set(
@@ -152,13 +162,56 @@ export async function POST(
       }
     }
 
+    if (rawAccountFlows.length > 0) {
+      const existingFlowIds = new Set(
+        (await prisma.accountFlow.findMany({
+          where: { exchangeId: id },
+          select: { externalId: true },
+        })).map((flow) => flow.externalId)
+      );
+      const newAccountFlows = rawAccountFlows.filter((flow) => !existingFlowIds.has(flow.externalId));
+
+      for (let i = 0; i < newAccountFlows.length; i += BATCH_SIZE) {
+        const batch = newAccountFlows.slice(i, i + BATCH_SIZE);
+        try {
+          await prisma.$transaction(
+            batch.map((flow) =>
+              prisma.accountFlow.create({
+                data: {
+                  exchangeId: id,
+                  externalId: flow.externalId,
+                  type: flow.type,
+                  asset: flow.asset,
+                  amount: flow.amount,
+                  symbol: flow.symbol,
+                  info: flow.info,
+                  time: flow.time,
+                },
+              })
+            )
+          );
+          accountFlowsAdded += batch.length;
+        } catch (batchError) {
+          console.error(`Account flow batch insert failed at offset ${i}:`, batchError);
+          accountFlowInsertErrors += batch.length;
+        }
+      }
+    }
+
     // Finalize SyncLog with appropriate status
-    const finalStatus = insertErrors > 0
-      ? (tradesAdded > 0 ? "partial" : "error")
+    const totalInsertErrors = insertErrors + accountFlowInsertErrors;
+    const finalStatus = totalInsertErrors > 0
+      ? (tradesAdded > 0 || accountFlowsAdded > 0 ? "partial" : "error")
       : "success";
-    const message = insertErrors > 0
+    const flowMessage = exchange.name === "binance"
+      ? ` Synced ${accountFlowsAdded} account flows from ${rawAccountFlows.length} fetched.`
+      : "";
+    const message = totalInsertErrors > 0
       ? `Imported ${tradesAdded} trades, ${insertErrors} failed. Fetched ${rawTrades.length} total. lastSync NOT advanced — retry will re-fetch failed trades.`
-      : `Imported ${tradesAdded} new trades from ${rawTrades.length} fetched`;
+      : `Imported ${tradesAdded} new trades from ${rawTrades.length} fetched.${flowMessage}`;
+    const detailedMessage = totalInsertErrors > 0
+      ? `Imported ${tradesAdded} trades and ${accountFlowsAdded} account flows; ${totalInsertErrors} inserts failed. Fetched ${rawTrades.length} trades and ${rawAccountFlows.length} flows. lastSync NOT advanced - retry will re-fetch failed records.`
+      : message;
 
     // Only advance lastSync on full success to avoid skipping failed trades
     if (finalStatus === "success") {
@@ -173,7 +226,7 @@ export async function POST(
       data: {
         status: finalStatus,
         tradesAdded,
-        message,
+        message: detailedMessage,
         completedAt: new Date(),
       },
     });
@@ -184,8 +237,11 @@ export async function POST(
         tradesAdded,
         totalFetched: rawTrades.length,
         duplicatesSkipped: rawTrades.length - newTrades.length,
+        accountFlowsAdded,
+        accountFlowsFetched: rawAccountFlows.length,
         errors: insertErrors,
-        message,
+        accountFlowErrors: accountFlowInsertErrors,
+        message: detailedMessage,
       },
     });
   } catch (error) {

@@ -1,105 +1,86 @@
-import { Suspense } from "react";
+import Link from "next/link";
 import { parseRange } from "@/lib/formatters";
-import { getTradesInRange, getTodayPnl } from "@/lib/dashboard/queries";
-import {
-  buildCumulativePnlSeries,
-  buildTradeCountSeries,
-} from "@/lib/dashboard/transforms";
-import { calculateMetrics } from "@/lib/analysis";
-import { MetricCard } from "@/components/dashboard/MetricCard";
-import { CumulativePnlChart } from "@/components/charts/CumulativePnlChart";
-import { TradeCountChart } from "@/components/charts/TradeCountChart";
-import { TradeHistoryTable } from "@/components/dashboard/TradeHistoryTable";
+import { getTradesInRange } from "@/lib/dashboard/queries";
+import { getServerDictionary } from "@/lib/i18n-server";
+import { OverviewDashboard } from "@/components/overview/OverviewDashboard";
+import { TradeHistoryTable, type SerializedTrade } from "@/components/dashboard/TradeHistoryTable";
 
 interface PageProps {
-  searchParams: Promise<{ range?: string; exchangeId?: string }>;
+  searchParams: Promise<{ range?: string; exchangeId?: string; view?: string }>;
+}
+
+function serializeTrade(trade: Awaited<ReturnType<typeof getTradesInRange>>[number]): SerializedTrade {
+  return {
+    id: trade.id,
+    exchangeName: trade.exchange.name,
+    symbol: trade.symbol,
+    side: trade.side,
+    leverage: trade.leverage,
+    entryPrice: trade.entryPrice,
+    exitPrice: trade.exitPrice,
+    realizedPnl: trade.realizedPnl,
+    fee: trade.fee,
+    fundingFee: trade.fundingFee,
+    holdDuration: trade.holdDuration,
+    entryTime: trade.entryTime.toISOString(),
+    exitTime: trade.exitTime.toISOString(),
+    tags: trade.tags,
+    notes: trade.notes,
+    entryQty: trade.entryQty,
+    entryValue: trade.entryValue,
+  };
+}
+
+function buildHref(params: { range?: string; exchangeId?: string }, view?: string): string {
+  const search = new URLSearchParams();
+  if (params.range) search.set("range", params.range);
+  if (params.exchangeId) search.set("exchangeId", params.exchangeId);
+  if (view) search.set("view", view);
+  const query = search.toString();
+  return query ? `/dashboard/performance?${query}` : "/dashboard/performance";
 }
 
 export default async function PerformancePage({ searchParams }: PageProps) {
   const params = await searchParams;
+
+  if (params.view !== "trades") {
+    return <OverviewDashboard params={params} />;
+  }
+
   const range = parseRange(params.range);
   const exchangeId = params.exchangeId;
-
+  const dictionary = await getServerDictionary();
+  const overview = dictionary.overview;
   const trades = await getTradesInRange(range, exchangeId);
-  const todayPnl = await getTodayPnl(exchangeId);
-  const metrics = calculateMetrics(trades);
-
-  const cumulativePnl = buildCumulativePnlSeries(trades);
-  const tradeCount = buildTradeCountSeries(trades);
 
   return (
-    <div className="space-y-5 lg:space-y-6">
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-        <MetricCard
-          label="Total PnL"
-          value={`${metrics.totalPnl >= 0 ? "+" : ""}$${metrics.totalPnl.toFixed(2)}`}
-          valueColor={metrics.totalPnl >= 0 ? "green" : "red"}
-          subValue={`${metrics.totalTrades} trades`}
-          description="Sum of realised PnL for closed aggregate trades in the selected range."
-        />
-        <MetricCard
-          label="Today"
-          value={`${todayPnl >= 0 ? "+" : ""}$${todayPnl.toFixed(2)}`}
-          valueColor={todayPnl >= 0 ? "green" : "red"}
-          description="Realised PnL from trades closed today."
-        />
-        <MetricCard
-          label="Win Rate"
-          value={`${metrics.winRate.toFixed(1)}%`}
-          subValue={`${metrics.winCount}W / ${metrics.lossCount}L`}
-          description="Winning closed trades divided by total closed trades."
-        />
-        <MetricCard
-          label="Profit Factor"
-          value={metrics.profitFactor.toFixed(2)}
-          subValue="Gross P / Gross L"
-          description="Gross realised profit divided by gross realised loss."
-        />
-        <MetricCard
-          label="Avg Win"
-          value={`+$${metrics.avgWin.toFixed(0)}`}
-          valueColor="green"
-          subValue={`Avg Loss: -$${Math.abs(metrics.avgLoss).toFixed(0)}`}
-          description="Average realised PnL for winning trades; average loss is shown below."
-        />
-        <MetricCard
-          label="Max Drawdown"
-          value={`-$${metrics.maxDrawdown.toFixed(0)}`}
-          valueColor="red"
-          subValue={`${metrics.maxConsecutiveLosses} consec. losses`}
-          description="Largest peak-to-trough decline in realised cumulative PnL for the selected range."
-        />
-      </div>
+    <div className="space-y-4">
+      <section className="trading-panel p-4 lg:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <nav className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-bg-tertiary/80 p-1" aria-label={overview.heroTitle}>
+            <Link className="rounded-md px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-bg-hover hover:text-text-primary" href={buildHref(params)}>
+              {overview.secondaryNav.overview}
+            </Link>
+            <span className="rounded-md bg-yellow px-3 py-1.5 text-xs font-semibold text-[#08111D]">
+              {overview.secondaryNav.trades}
+            </span>
+            <Link className="rounded-md px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-bg-hover hover:text-text-primary" href={buildHref(params)}>
+              {overview.secondaryNav.review}
+            </Link>
+            <Link className="rounded-md px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-bg-hover hover:text-text-primary" href="/dashboard/analytics">
+              {overview.secondaryNav.analytics}
+            </Link>
+          </nav>
+          <Link
+            href={buildHref(params)}
+            className="rounded-lg border border-border bg-bg-tertiary/90 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:border-yellow/40 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
+          >
+            {overview.secondaryNav.overview}
+          </Link>
+        </div>
+      </section>
 
-      {/* Charts */}
-      <Suspense>
-        <CumulativePnlChart data={cumulativePnl} />
-      </Suspense>
-
-      <TradeCountChart data={tradeCount} />
-
-      <TradeHistoryTable
-        trades={trades.map((t) => ({
-          id: t.id,
-          exchangeName: t.exchange.name,
-          symbol: t.symbol,
-          side: t.side,
-          leverage: t.leverage,
-          entryPrice: t.entryPrice,
-          exitPrice: t.exitPrice,
-          realizedPnl: t.realizedPnl,
-          fee: t.fee,
-          fundingFee: t.fundingFee,
-          holdDuration: t.holdDuration,
-          entryTime: t.entryTime.toISOString(),
-          exitTime: t.exitTime.toISOString(),
-          tags: t.tags,
-          notes: t.notes,
-          entryQty: t.entryQty,
-          entryValue: t.entryValue,
-        }))}
-      />
+      <TradeHistoryTable trades={trades.map(serializeTrade)} />
     </div>
   );
 }

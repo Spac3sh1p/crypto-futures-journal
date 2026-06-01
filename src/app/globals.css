@@ -1,10 +1,34 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: "Exo 2";
-  src: url("./fonts/exo-2-latin.woff2") format("woff2");
+  font-family: "MiSans";
+  src: url("./fonts/MiSans-Regular.woff2") format("woff2");
   font-style: normal;
-  font-weight: 300 700;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "MiSans";
+  src: url("./fonts/MiSans-Medium.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "MiSans";
+  src: url("./fonts/MiSans-Semibold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "MiSans";
+  src: url("./fonts/MiSans-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
   font-display: swap;
 }
 
@@ -25,28 +49,31 @@
 }
 
 :root {
-  /* Cyberpunk Fintech Theme: deep navy + gold trust + tech purple */
-  --bg-primary: #0F172A;
-  --bg-secondary: #1E293B;
-  --bg-tertiary: #162032;
-  --bg-hover: #263449;
-  --border: #334155;
-  --border-light: #1E293B;
+  /* V4 professional trading terminal theme */
+  --bg-primary: #07101B;
+  --bg-secondary: #111B29;
+  --bg-tertiary: #0C1522;
+  --bg-hover: #18263A;
+  --border: #26364B;
+  --border-light: #1A283A;
+  --panel: #111B29;
+  --panel-elevated: #142033;
+  --chart-bg: #08111D;
 
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
+  --text-primary: #F3F7FC;
+  --text-secondary: #BBC7D6;
+  --text-muted: #8190A6;
 
-  --green: #10B981;
-  --green-dim: rgba(16, 185, 129, 0.12);
-  --red: #EF4444;
-  --red-dim: rgba(239, 68, 68, 0.12);
-  --yellow: #F59E0B;
-  --yellow-dim: rgba(245, 158, 11, 0.12);
-  --blue: #3B82F6;
-  --blue-dim: rgba(59, 130, 246, 0.12);
-  --purple: #8B5CF6;
-  --purple-dim: rgba(139, 92, 246, 0.12);
+  --green: #22C38E;
+  --green-dim: rgba(34, 195, 142, 0.13);
+  --red: #FF5A5F;
+  --red-dim: rgba(255, 90, 95, 0.13);
+  --yellow: #F5B31A;
+  --yellow-dim: rgba(245, 179, 26, 0.14);
+  --blue: #7DB4FF;
+  --blue-dim: rgba(125, 180, 255, 0.13);
+  --purple: #8B7CFF;
+  --purple-dim: rgba(139, 124, 255, 0.13);
 
   --background: var(--bg-primary);
   --foreground: var(--text-primary);
@@ -74,47 +101,95 @@
   --color-blue-dim: var(--blue-dim);
   --color-purple: var(--purple);
   --color-purple-dim: var(--purple-dim);
-  --font-sans: "Exo 2", sans-serif;
+  --font-sans: "MiSans", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-  --font-display: "Orbitron", sans-serif;
+  --font-display: "MiSans", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at 14% 0%, rgba(80, 142, 210, 0.12), transparent 28rem),
+    radial-gradient(circle at 84% 8%, rgba(245, 179, 26, 0.06), transparent 22rem),
+    linear-gradient(180deg, #07101B 0%, #08111D 48%, #050B13 100%);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
 }
 
-/* Utility classes for Cyberpunk Fintech theme */
 .font-display {
   font-family: var(--font-display);
 }
 
-/* Card gold top accent */
 .card-accent {
   border-top: 2px solid var(--yellow);
 }
 
-/* Glow hover effect for interactive rows */
 .row-glow:hover {
-  background: rgba(245, 158, 11, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.08);
+  background: rgba(245, 179, 26, 0.055);
+  box-shadow: inset 0 0 0 1px rgba(245, 179, 26, 0.11);
 }
 
-/* Scrollbar styling */
+.trading-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(20, 32, 51, 0.96), rgba(12, 21, 34, 0.98)),
+    var(--panel);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.trading-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(125, 180, 255, 0.075), transparent 9rem),
+    linear-gradient(180deg, rgba(21, 33, 52, 0.98), rgba(13, 23, 37, 0.98));
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.terminal-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.terminal-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text-primary);
+}
+
+.terminal-control {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(12, 21, 34, 0.92);
+  color: var(--text-secondary);
+}
+
+.terminal-control:hover {
+  border-color: rgba(245, 179, 26, 0.44);
+  color: var(--text-primary);
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-primary);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
+  background: #223149;
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: #344967;
 }

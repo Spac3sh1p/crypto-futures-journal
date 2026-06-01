@@ -1,33 +1,41 @@
-import type { SymbolReport } from "@/lib/dashboard/analytics-transforms";
+"use client";
 
-function formatDuration(seconds: number): string {
+import type { SymbolReport } from "@/lib/dashboard/analytics-transforms";
+import { useI18n } from "@/components/i18n/LanguageProvider";
+import type { Locale } from "@/lib/i18n";
+
+function formatDuration(seconds: number, locale: Locale): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
+  if (locale === "zh") return `${h}小时 ${m}分`;
   return `${h}h ${m}m`;
 }
 
 export function SymbolsReport({ data }: { data: SymbolReport[] }) {
+  const { dictionary, locale } = useI18n();
+  const text = dictionary.analytics.symbols;
+
   return (
-    <div className="bg-bg-secondary rounded-lg border border-border">
+    <div className="trading-panel overflow-hidden">
       <div className="px-5 py-4">
-        <h3 className="text-sm font-semibold text-text-primary">Traded Symbols Report</h3>
+        <h3 className="terminal-section-title">{dictionary.analytics.reports.symbolsTitle}</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border">
-              <th className="px-4 py-2 text-left text-xs text-text-muted">Symbol</th>
-              <th className="px-4 py-2 text-center text-xs text-text-muted">Trade Count</th>
-              <th className="px-4 py-2 text-center text-xs text-text-muted">Win Rate</th>
-              <th className="px-4 py-2 text-center text-xs text-text-muted">Long Vs Short</th>
-              <th className="px-4 py-2 text-center text-xs text-text-muted">Avg Trade Duration</th>
-              <th className="px-4 py-2 text-right text-xs text-text-muted">Avg Gain</th>
-              <th className="px-4 py-2 text-right text-xs text-text-muted">Total Gain</th>
+            <tr className="border-b border-border bg-bg-tertiary/42">
+              <th className="px-4 py-2 text-left text-xs text-text-muted">{text.symbol}</th>
+              <th className="px-4 py-2 text-center text-xs text-text-muted">{text.tradeCount}</th>
+              <th className="px-4 py-2 text-center text-xs text-text-muted">{text.winRate}</th>
+              <th className="px-4 py-2 text-center text-xs text-text-muted">{text.longVsShort}</th>
+              <th className="px-4 py-2 text-center text-xs text-text-muted">{text.avgDuration}</th>
+              <th className="px-4 py-2 text-right text-xs text-text-muted">{text.avgGain}</th>
+              <th className="px-4 py-2 text-right text-xs text-text-muted">{text.totalGain}</th>
             </tr>
           </thead>
           <tbody>
             {data.map((row) => (
-              <tr key={row.symbol} className="border-b border-border-light hover:bg-bg-hover transition-colors">
+              <tr key={row.symbol} className="border-b border-border-light transition-colors hover:bg-bg-hover/52">
                 <td className="px-4 py-3 font-mono text-text-primary text-xs">{row.symbol}</td>
                 <td className="px-4 py-3 text-center font-mono text-text-primary text-xs">{row.tradeCount}</td>
                 <td className="px-4 py-3 text-center font-mono text-text-primary text-xs">{row.winRate.toFixed(0)}%</td>
@@ -49,7 +57,7 @@ export function SymbolsReport({ data }: { data: SymbolReport[] }) {
                   <span className={`inline-block px-3 py-1.5 rounded-full text-sm font-mono font-medium ${
                     row.avgDuration > 14400 ? "bg-green/20 text-green" : row.avgDuration > 3600 ? "bg-yellow/20 text-yellow" : "bg-red/20 text-red"
                   }`}>
-                    {formatDuration(row.avgDuration)}
+                    {formatDuration(row.avgDuration, locale)}
                   </span>
                 </td>
                 <td className={`px-4 py-3 text-right font-mono text-xs ${row.avgGain >= 0 ? "text-green" : "text-red"}`}>

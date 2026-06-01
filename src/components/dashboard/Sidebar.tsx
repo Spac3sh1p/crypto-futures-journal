@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useI18n } from "@/components/i18n/LanguageProvider";
 
 function IconPerformance({ className }: { className?: string }) {
   return (
@@ -21,6 +22,19 @@ function IconAnalytics({ className }: { className?: string }) {
   );
 }
 
+function IconTrades({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 6h13" />
+      <path d="M8 12h13" />
+      <path d="M8 18h13" />
+      <path d="M3 6h.01" />
+      <path d="M3 12h.01" />
+      <path d="M3 18h.01" />
+    </svg>
+  );
+}
+
 function IconSettings({ className }: { className?: string }) {
   return (
     <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -31,50 +45,85 @@ function IconSettings({ className }: { className?: string }) {
 }
 
 const navItems = [
-  { href: "/dashboard/performance", label: "Performance", Icon: IconPerformance },
-  { href: "/dashboard/analytics", label: "Analytics", Icon: IconAnalytics },
-  { href: "/dashboard/settings", label: "Settings", Icon: IconSettings },
+  { href: "/dashboard/performance", id: "performance", labelKey: "performance" as const, Icon: IconPerformance },
+  { href: "/dashboard/analytics", id: "analytics", labelKey: "analytics" as const, Icon: IconAnalytics },
+  { href: "/dashboard/performance?view=trades", id: "trades", labelKey: "performance" as const, Icon: IconTrades },
+  { href: "/dashboard/settings", id: "settings", labelKey: "settings" as const, Icon: IconSettings },
 ];
 
 export function Sidebar() {
+  const { dictionary, locale } = useI18n();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentView = searchParams.get("view");
+  const sourceText = locale === "zh"
+    ? { version: "专业版 v4.0", source: "数据源", market: "Binance", scope: "U 本位合约", sync: "本地只读同步" }
+    : { version: "Pro v4.0", source: "Data Source", market: "Binance", scope: "USDT Futures", sync: "Local read-only sync" };
 
   return (
-    <aside className="flex h-full w-20 shrink-0 flex-col border-r border-border bg-bg-secondary sm:w-60">
-      <div className="border-b border-border p-4 sm:p-5">
-        <h1 className="hidden text-sm font-bold uppercase tracking-[0.15em] text-yellow sm:block">
-          Crypto Futures
+    <aside className="flex h-full w-20 shrink-0 flex-col border-r border-border bg-[linear-gradient(180deg,rgba(13,23,37,0.98),rgba(7,16,27,0.98))] sm:w-64">
+      <div className="border-b border-border px-4 py-5 sm:px-6">
+        <h1 className="hidden text-base font-bold tracking-wide text-text-primary sm:block">
+          {dictionary.common.appName}
         </h1>
         <h1 className="text-center text-xs font-bold uppercase tracking-[0.12em] text-yellow sm:hidden">
-          CF
+          {dictionary.common.appShortName}
         </h1>
-        <p className="mt-1 hidden text-[11px] tracking-wide text-text-muted sm:block">Trading Journal</p>
+        <p className="mt-2 hidden text-xs font-medium text-text-muted sm:block">{sourceText.version}</p>
       </div>
 
-      <nav className="flex-1 p-3" aria-label="Dashboard navigation">
-        <div className="hidden px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted sm:block">
-          Dashboard
+      <nav className="flex-1 space-y-1 p-3 sm:p-4" aria-label={dictionary.common.dashboard}>
+        <div className="hidden px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-text-muted sm:block">
+          {dictionary.common.dashboard}
         </div>
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isTrades = pathname === "/dashboard/performance" && currentView === "trades";
+          const isActive = item.id === "trades"
+            ? isTrades
+            : item.id === "performance"
+              ? pathname === "/dashboard/performance" && currentView !== "trades"
+              : pathname === item.href;
+          const label = item.id === "trades"
+            ? (locale === "zh" ? "交易记录" : "Trade Records")
+            : dictionary.nav[item.labelKey];
           return (
             <Link
               key={item.href}
               href={item.href}
-              title={item.label}
+              title={label}
               aria-current={isActive ? "page" : undefined}
-              className={`flex items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 sm:justify-start ${
+              className={`relative flex items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 sm:justify-start ${
                 isActive
-                  ? "bg-yellow-dim text-yellow font-medium border border-yellow/20"
-                  : "text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+                  ? "border border-yellow/20 bg-[linear-gradient(90deg,rgba(245,179,26,0.22),rgba(245,179,26,0.07))] text-yellow shadow-[inset_3px_0_0_var(--yellow)]"
+                  : "text-text-secondary hover:bg-bg-hover/70 hover:text-text-primary"
               }`}
             >
-              <item.Icon className={isActive ? "text-yellow" : ""} />
-              <span className="hidden sm:inline">{item.label}</span>
+              <item.Icon className={isActive ? "text-yellow" : "text-text-muted"} />
+              <span className="hidden sm:inline">{label}</span>
             </Link>
           );
         })}
       </nav>
+
+      <div className="hidden p-4 sm:block">
+        <div className="rounded-xl border border-border bg-bg-tertiary/78 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">{sourceText.source}</div>
+          <div className="mt-3 flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-yellow/12 text-yellow">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l3.4 3.4L12 9.8 8.6 6.4 12 3zM6.4 8.6L9.8 12l-3.4 3.4L3 12l3.4-3.4zM17.6 8.6L21 12l-3.4 3.4L14.2 12l3.4-3.4zM12 14.2l3.4 3.4L12 21l-3.4-3.4 3.4-3.4z" fill="currentColor" />
+              </svg>
+            </span>
+            <div>
+              <div className="text-sm font-semibold text-text-primary">{sourceText.market}</div>
+              <div className="text-[11px] font-medium text-text-muted">{sourceText.scope}</div>
+            </div>
+          </div>
+          <div className="mt-4 border-t border-border-light pt-3 text-[11px] font-medium text-text-muted">
+            {sourceText.sync}
+          </div>
+        </div>
+      </div>
     </aside>
   );
 }

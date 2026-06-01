@@ -23,8 +23,8 @@ export function MetricCard({
         : "text-text-primary";
 
   return (
-    <div className="min-w-0 rounded-[10px] border border-border border-t-2 border-t-yellow bg-bg-secondary p-4">
-      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+    <div className="trading-card min-w-0 p-4">
+      <div className="terminal-label mb-2 flex items-center gap-1.5">
         <span>{label}</span>
         {description && <InfoHint label={description} />}
       </div>

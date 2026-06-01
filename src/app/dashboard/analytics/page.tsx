@@ -23,6 +23,7 @@ import { DurationReport } from "@/components/analytics/DurationReport";
 import { SizeReport } from "@/components/analytics/SizeReport";
 import { SymbolsReport } from "@/components/analytics/SymbolsReport";
 import { FundingFeesPanel } from "@/components/analytics/FundingFeesPanel";
+import { getServerDictionary } from "@/lib/i18n-server";
 
 interface PageProps {
   searchParams: Promise<{ range?: string; exchangeId?: string }>;
@@ -32,6 +33,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const range = parseRange(params.range);
   const exchangeId = params.exchangeId;
+  const dictionary = await getServerDictionary();
 
   const trades = await getTradesInRange(range, exchangeId);
   const metrics = calculateMetrics(trades);
@@ -50,7 +52,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
   const fees = buildFeesReport(trades);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Section 1: Summary Cards */}
       <SummaryCards
         totalTrades={metrics.totalTrades}
@@ -72,17 +74,17 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       <SideBreakdown data={shortsBreakdown} />
 
       {/* Section 5 & 6: Winning / Losing Trades */}
-      <WinLossTable title="Winning Trades" rows={winningTrades} isWin={true} />
-      <WinLossTable title="Losing Trades" rows={losingTrades} isWin={false} />
+      <WinLossTable title={dictionary.analytics.winLossTable.winningTrades} rows={winningTrades} isWin={true} />
+      <WinLossTable title={dictionary.analytics.winLossTable.losingTrades} rows={losingTrades} isWin={false} />
 
       {/* Section 7: Trade Result By Day + By Time */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TradeResultByDayChart data={resultByDay} />
         <TradeResultByTimeChart data={resultByTime} />
       </div>
 
       {/* Section 8: Duration Report + Size Report */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DurationReport data={durationReport} />
         <SizeReport data={sizeReport} />
       </div>
