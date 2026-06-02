@@ -245,9 +245,12 @@ export const dictionaries = {
       emptyMessage: "未获取到真实交易所 K 线前，图表会保持隐藏。",
       real: "真实",
       futures: "U本位合约",
+      beforeContext: "前",
+      holdingContext: "持仓",
+      afterContext: "后",
       mfeTitle: "最大有利波动价格 {price}",
       maeTitle: "最大不利波动价格 {price}",
-      aria: "{symbol} {side} 交易真实 K 线复盘，包含 {entry} 和 {exit} 标记",
+      aria: "{symbol} {side} 交易上下文走势复盘，包含 {entry} 和 {exit} 标记",
     },
     analytics: {
       summary: {
@@ -600,9 +603,12 @@ export const dictionaries = {
       emptyMessage: "The chart is hidden until real exchange candles are available.",
       real: "Real",
       futures: "Binance Futures",
+      beforeContext: "Before",
+      holdingContext: "Held",
+      afterContext: "After",
       mfeTitle: "Most Favorable Excursion price {price}",
       maeTitle: "Maximum Adverse Excursion price {price}",
-      aria: "{symbol} {side} trade real candlestick summary with {entry} and {exit} markers",
+      aria: "{symbol} {side} trade context price path with {entry} and {exit} markers",
     },
     analytics: {
       summary: {

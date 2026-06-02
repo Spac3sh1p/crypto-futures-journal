@@ -22,6 +22,22 @@ function IconAnalytics({ className }: { className?: string }) {
   );
 }
 
+function IconCalendar({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3v4" />
+      <path d="M16 3v4" />
+      <path d="M4 9h16" />
+      <path d="M6 5h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z" />
+      <path d="M8 13h.01" />
+      <path d="M12 13h.01" />
+      <path d="M16 13h.01" />
+      <path d="M8 17h.01" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
+
 function IconTrades({ className }: { className?: string }) {
   return (
     <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -46,6 +62,7 @@ function IconSettings({ className }: { className?: string }) {
 
 const navItems = [
   { href: "/dashboard/performance", id: "performance", labelKey: "performance" as const, Icon: IconPerformance },
+  { href: "/dashboard/calendar", id: "calendar", Icon: IconCalendar },
   { href: "/dashboard/analytics", id: "analytics", labelKey: "analytics" as const, Icon: IconAnalytics },
   { href: "/dashboard/performance?view=trades", id: "trades", labelKey: "performance" as const, Icon: IconTrades },
   { href: "/dashboard/settings", id: "settings", labelKey: "settings" as const, Icon: IconSettings },
@@ -82,10 +99,14 @@ export function Sidebar() {
             ? isTrades
             : item.id === "performance"
               ? pathname === "/dashboard/performance" && currentView !== "trades"
-              : pathname === item.href;
+              : item.id === "calendar"
+                ? pathname === "/dashboard/calendar"
+                : pathname === item.href;
           const label = item.id === "trades"
             ? (locale === "zh" ? "交易记录" : "Trade Records")
-            : dictionary.nav[item.labelKey];
+            : item.id === "calendar"
+              ? (locale === "zh" ? "月度复盘" : "Monthly Review")
+              : item.labelKey ? dictionary.nav[item.labelKey] : "";
           return (
             <Link
               key={item.href}

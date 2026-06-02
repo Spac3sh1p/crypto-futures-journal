@@ -6,7 +6,7 @@ import { OverviewDashboard } from "@/components/overview/OverviewDashboard";
 import { TradeHistoryTable, type SerializedTrade } from "@/components/dashboard/TradeHistoryTable";
 
 interface PageProps {
-  searchParams: Promise<{ range?: string; exchangeId?: string; view?: string }>;
+  searchParams: Promise<{ range?: string; exchangeId?: string; view?: string; tradeId?: string }>;
 }
 
 function serializeTrade(trade: Awaited<ReturnType<typeof getTradesInRange>>[number]): SerializedTrade {
@@ -80,7 +80,11 @@ export default async function PerformancePage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      <TradeHistoryTable trades={trades.map(serializeTrade)} />
+      <TradeHistoryTable
+        key={params.tradeId ?? "trade-history"}
+        trades={trades.map(serializeTrade)}
+        focusedTradeId={params.tradeId}
+      />
     </div>
   );
 }

@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
-import type { MarketCandle } from "@/lib/market/klines";
+import {
+  calculateTradeExcursion,
+  type MarketCandle,
+} from "@/lib/market/klines";
+import { formatDuration } from "@/lib/formatters";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { template } from "@/lib/i18n";
 
@@ -40,6 +44,7 @@ const PLOT_TOP = 18;
 const PLOT_BOTTOM = 26;
 const UP_COLOR = "#22ab94";
 const DOWN_COLOR = "#ef5350";
+const LINE_COLOR = "#7db4ff";
 const GRID_MAJOR = "#263247";
 const GRID_MINOR = "#182235";
 const CHART_BG = "#080f1b";
@@ -55,18 +60,6 @@ function markerLabel(side: string, phase: "entry" | "exit"): "B" | "S" {
     return phase === "entry" ? "S" : "B";
   }
   return phase === "entry" ? "B" : "S";
-}
-
-function nearestCandleIndex(candles: MarketCandle[], targetTime: number): number {
-  if (!Number.isFinite(targetTime)) {
-    return 0;
-  }
-
-  return candles.reduce((bestIndex, candle, index) => {
-    const bestDistance = Math.abs(candles[bestIndex].time - targetTime);
-    const distance = Math.abs(candle.time - targetTime);
-    return distance < bestDistance ? index : bestIndex;
-  }, 0);
 }
 
 function formatChartPrice(price: number): string {
@@ -132,10 +125,11 @@ export function MiniKlineChart({
   exitTime,
   side,
 }: MiniKlineChartProps) {
-  const { dictionary } = useI18n();
+  const { dictionary, locale } = useI18n();
   const text = dictionary.miniKline;
   const rawSvgId = useId().replace(/:/g, "");
   const clipId = `mini-kline-clip-${rawSvgId}`;
+  const lineFillId = `mini-kline-fill-${rawSvgId}`;
   const normalizedExchange = exchangeName.toLowerCase();
   const entryMs = Date.parse(entryTime);
   const exitMs = Date.parse(exitTime);
@@ -237,14 +231,10 @@ export function MiniKlineChart({
     }
 
     const prices = activeState.candles.flatMap((d) => [d.high, d.low]);
-    const maePrice = side === "Long" ? Math.min(...prices) : Math.max(...prices);
-    const mfePrice = side === "Long" ? Math.max(...prices) : Math.min(...prices);
-    const mfePercent = side === "Long"
-      ? ((mfePrice - entryPrice) / entryPrice) * 100
-      : ((entryPrice - mfePrice) / entryPrice) * 100;
-    const maePercent = side === "Long"
-      ? ((maePrice - entryPrice) / entryPrice) * 100
-      : ((entryPrice - maePrice) / entryPrice) * 100;
+    const { maePrice, maePercent, mfePrice, mfePercent } = calculateTradeExcursion(
+      activeState.candles,
+      { entryPrice, entryTime: entryMs, exitTime: exitMs, side }
+    );
     const minPrice = Math.min(...prices, entryPrice, exitPrice);
     const maxPrice = Math.max(...prices, entryPrice, exitPrice);
     const yPadding = Math.max((maxPrice - minPrice) * 0.12, Math.abs(entryPrice) * 0.001, 0.0001);
@@ -252,33 +242,51 @@ export function MiniKlineChart({
     const maxY = maxPrice + yPadding;
     const plotWidth = CHART_WIDTH - PLOT_LEFT - PLOT_RIGHT;
     const plotHeight = CHART_HEIGHT - PLOT_TOP - PLOT_BOTTOM;
-    const candleGap = plotWidth / activeState.candles.length;
-    const candleWidth = Math.max(2, Math.min(9, candleGap * 0.62));
-    const entryIndex = nearestCandleIndex(activeState.candles, entryMs);
-    const exitIndex = nearestCandleIndex(activeState.candles, exitMs);
     const lastClose = activeState.candles.at(-1)?.close ?? exitPrice;
+    const firstTime = activeState.candles[0]?.time ?? entryMs;
+    const lastTime = activeState.candles.at(-1)?.time ?? exitMs;
+    const timelineStart = Math.min(firstTime, entryMs, exitMs);
+    const timelineEnd = Math.max(lastTime, entryMs, exitMs, timelineStart + 1);
 
-    const xForIndex = (index: number) => PLOT_LEFT + candleGap * index + candleGap / 2;
+    const xForTime = (time: number) =>
+      PLOT_LEFT + ((clamp(time, timelineStart, timelineEnd) - timelineStart) / (timelineEnd - timelineStart)) * plotWidth;
     const yForPrice = (price: number) =>
       PLOT_TOP + ((maxY - price) / (maxY - minY)) * plotHeight;
+    const closePoints = activeState.candles.map((candle) => ({
+      x: xForTime(candle.time),
+      y: yForPrice(candle.close),
+    }));
+    const linePath = closePoints
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+      .join(" ");
+    const areaPath = closePoints.length > 0
+      ? `${linePath} L ${closePoints.at(-1)?.x.toFixed(2)} ${CHART_HEIGHT - PLOT_BOTTOM} L ${closePoints[0].x.toFixed(2)} ${CHART_HEIGHT - PLOT_BOTTOM} Z`
+      : "";
+    const entryX = xForTime(entryMs);
+    const exitX = xForTime(exitMs);
     const yTicks = Array.from({ length: 6 }, (_, i) => minY + ((maxY - minY) * i) / 5).reverse();
     const minorYTicks = Array.from({ length: 11 }, (_, i) => minY + ((maxY - minY) * i) / 10).reverse();
     const xGridTicks = Array.from({ length: 7 }, (_, i) => PLOT_LEFT + (plotWidth * i) / 6);
     const plotRightX = CHART_WIDTH - PLOT_RIGHT;
 
     return {
-      candleWidth,
-      entryIndex,
-      exitIndex,
+      areaPath,
+      beforeSeconds: Math.max(0, Math.round((entryMs - timelineStart) / 1000)),
+      closePoints,
+      entryX,
+      exitX,
+      holdSeconds: Math.max(0, Math.round(Math.abs(exitMs - entryMs) / 1000)),
+      linePath,
       maePrice,
       maePercent,
       mfePrice,
       mfePercent,
+      afterSeconds: Math.max(0, Math.round((timelineEnd - exitMs) / 1000)),
       lastClose,
       plotHeight,
       plotWidth,
       plotRightX,
-      xForIndex,
+      xForTime,
       xGridTicks,
       minorYTicks,
       yForPrice,
@@ -304,6 +312,14 @@ export function MiniKlineChart({
           {activeState.interval || text.real} / {text.futures}
         </span>
         {chart && (
+          <>
+            <span className="hidden text-xs font-medium text-text-muted sm:inline">/</span>
+            <span className="text-xs font-medium text-text-secondary">
+              {text.beforeContext} {formatDuration(chart.beforeSeconds, locale)} · {text.holdingContext} {formatDuration(chart.holdSeconds, locale)} · {text.afterContext} {formatDuration(chart.afterSeconds, locale)}
+            </span>
+          </>
+        )}
+        {chart && (
           <span className="flex w-full flex-wrap items-center gap-1.5 text-xs font-medium text-text-secondary sm:ml-auto sm:w-auto">
             <span
               title={template(text.mfeTitle, { price: formatChartPrice(chart.mfePrice) })}
@@ -319,16 +335,6 @@ export function MiniKlineChart({
             </span>
           </span>
         )}
-        <span className="flex w-full items-center gap-2 text-xs font-medium text-text-secondary sm:w-auto">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: UP_COLOR }} />
-            B
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: DOWN_COLOR }} />
-            S
-          </span>
-        </span>
       </div>
 
       {!chart ? (
@@ -361,6 +367,10 @@ export function MiniKlineChart({
                   height={chart.plotHeight}
                 />
               </clipPath>
+              <linearGradient id={lineFillId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={LINE_COLOR} stopOpacity="0.22" />
+                <stop offset="100%" stopColor={LINE_COLOR} stopOpacity="0" />
+              </linearGradient>
             </defs>
             <rect x="0" y="0" width={CHART_WIDTH} height={CHART_HEIGHT} fill={CHART_BG} />
             <rect
@@ -376,6 +386,14 @@ export function MiniKlineChart({
               width={chart.plotWidth}
               height={chart.plotHeight}
               fill="transparent"
+            />
+            <rect
+              x={Math.min(chart.entryX, chart.exitX)}
+              y={PLOT_TOP}
+              width={Math.max(Math.abs(chart.exitX - chart.entryX), 2)}
+              height={chart.plotHeight}
+              fill={side === "Long" ? UP_COLOR : DOWN_COLOR}
+              opacity="0.075"
             />
             {chart.xGridTicks.map((x) => (
               <line
@@ -426,26 +444,6 @@ export function MiniKlineChart({
             <line
               x1={PLOT_LEFT}
               x2={chart.plotRightX}
-              y1={chart.yForPrice(entryPrice)}
-              y2={chart.yForPrice(entryPrice)}
-              stroke={entryMarker === "B" ? UP_COLOR : DOWN_COLOR}
-              strokeDasharray="4 7"
-              strokeOpacity="0.55"
-              strokeWidth="1"
-            />
-            <line
-              x1={PLOT_LEFT}
-              x2={chart.plotRightX}
-              y1={chart.yForPrice(exitPrice)}
-              y2={chart.yForPrice(exitPrice)}
-              stroke={exitMarker === "B" ? UP_COLOR : DOWN_COLOR}
-              strokeDasharray="4 7"
-              strokeOpacity="0.4"
-              strokeWidth="1"
-            />
-            <line
-              x1={PLOT_LEFT}
-              x2={chart.plotRightX}
               y1={chart.yForPrice(chart.lastClose)}
               y2={chart.yForPrice(chart.lastClose)}
               stroke="#7b8798"
@@ -453,39 +451,46 @@ export function MiniKlineChart({
               strokeOpacity="0.35"
               strokeWidth="1"
             />
+            <line
+              x1={chart.entryX}
+              x2={chart.entryX}
+              y1={PLOT_TOP}
+              y2={CHART_HEIGHT - PLOT_BOTTOM}
+              stroke={entryMarker === "B" ? UP_COLOR : DOWN_COLOR}
+              strokeDasharray="3 6"
+              strokeOpacity="0.52"
+              strokeWidth="1"
+            />
+            <line
+              x1={chart.exitX}
+              x2={chart.exitX}
+              y1={PLOT_TOP}
+              y2={CHART_HEIGHT - PLOT_BOTTOM}
+              stroke={exitMarker === "B" ? UP_COLOR : DOWN_COLOR}
+              strokeDasharray="3 6"
+              strokeOpacity="0.52"
+              strokeWidth="1"
+            />
             <g clipPath={`url(#${clipId})`}>
-              {activeState.candles.map((candle, index) => {
-                const bullish = candle.close >= candle.open;
-                const color = bullish ? UP_COLOR : DOWN_COLOR;
-                const x = chart.xForIndex(index);
-                const openY = chart.yForPrice(candle.open);
-                const closeY = chart.yForPrice(candle.close);
-                const bodyTop = Math.min(openY, closeY);
-                const bodyHeight = Math.max(Math.abs(closeY - openY), 1.4);
-
-                return (
-                  <g key={`${candle.time}-${index}`}>
-                    <line
-                      x1={x}
-                      x2={x}
-                      y1={chart.yForPrice(candle.high)}
-                      y2={chart.yForPrice(candle.low)}
-                      stroke={color}
-                      strokeOpacity="0.95"
-                      strokeWidth="1.35"
-                    />
-                    <rect
-                      x={x - chart.candleWidth / 2}
-                      y={bodyTop}
-                      width={chart.candleWidth}
-                      height={bodyHeight}
-                      fill={color}
-                      stroke={color}
-                      strokeWidth="1"
-                    />
-                  </g>
-                );
-              })}
+              {chart.areaPath && <path d={chart.areaPath} fill={`url(#${lineFillId})`} />}
+              <path
+                d={chart.linePath}
+                fill="none"
+                stroke={LINE_COLOR}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+              />
+              {chart.closePoints.map((point, index) => (
+                <circle
+                  key={`close-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r="1.35"
+                  fill={LINE_COLOR}
+                  opacity="0.65"
+                />
+              ))}
             </g>
             <line
               x1={chart.plotRightX}
@@ -514,34 +519,16 @@ export function MiniKlineChart({
             >
               {formatChartPrice(chart.lastClose)}
             </text>
-            <text
-              x={chart.plotRightX + 13}
-              y={chart.yForPrice(entryPrice) + 3}
-              textAnchor="start"
-              fill={entryMarker === "B" ? UP_COLOR : DOWN_COLOR}
-              className="font-mono text-[10px] font-bold"
-            >
-              {entryMarker}
-            </text>
-            <text
-              x={chart.plotRightX + 13}
-              y={chart.yForPrice(exitPrice) + 3}
-              textAnchor="start"
-              fill={exitMarker === "B" ? UP_COLOR : DOWN_COLOR}
-              className="font-mono text-[10px] font-bold"
-            >
-              {exitMarker}
-            </text>
             <MarkerShape
               label={entryMarker}
-              x={chart.xForIndex(chart.entryIndex)}
+              x={chart.entryX}
               y={chart.yForPrice(entryPrice)}
               plotTop={PLOT_TOP}
               plotBottom={CHART_HEIGHT - PLOT_BOTTOM}
             />
             <MarkerShape
               label={exitMarker}
-              x={chart.xForIndex(chart.exitIndex)}
+              x={chart.exitX}
               y={chart.yForPrice(exitPrice)}
               plotTop={PLOT_TOP}
               plotBottom={CHART_HEIGHT - PLOT_BOTTOM}

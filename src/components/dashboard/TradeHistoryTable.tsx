@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { TradeDetailPanel } from "./TradeDetailPanel";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { useI18n } from "@/components/i18n/LanguageProvider";
@@ -13,6 +13,10 @@ import {
   formatTradePrice,
   sanitizeCsvField,
 } from "@/lib/formatters";
+import {
+  getInitialTradeHistoryPage,
+  TRADE_HISTORY_PAGE_SIZE,
+} from "@/lib/dashboard/trade-history-routing";
 
 export interface SerializedTrade {
   id: string;
@@ -34,13 +38,23 @@ export interface SerializedTrade {
   entryValue: number;
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = TRADE_HISTORY_PAGE_SIZE;
 
-export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
+export function TradeHistoryTable({
+  trades,
+  focusedTradeId,
+}: {
+  trades: SerializedTrade[];
+  focusedTradeId?: string;
+}) {
   const { dictionary, locale } = useI18n();
   const text = dictionary.tradeHistory;
-  const [currentPage, setCurrentPage] = useState(1);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(() =>
+    getInitialTradeHistoryPage(trades.map((trade) => trade.id), focusedTradeId, PAGE_SIZE)
+  );
+  const [expandedId, setExpandedId] = useState<string | null>(() =>
+    focusedTradeId && trades.some((trade) => trade.id === focusedTradeId) ? focusedTradeId : null
+  );
 
   const totalPages = Math.ceil(trades.length / PAGE_SIZE);
   const startIdx = (currentPage - 1) * PAGE_SIZE;
@@ -49,6 +63,19 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
   const toggleTrade = useCallback((id: string) => {
     setExpandedId((current) => current === id ? null : id);
   }, []);
+
+  useEffect(() => {
+    if (!focusedTradeId || expandedId !== focusedTradeId) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`trade-row-${focusedTradeId}`)?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [expandedId, focusedTradeId, currentPage]);
 
   const downloadCsv = useCallback(() => {
     const headers = locale === "zh"
@@ -144,6 +171,7 @@ export function TradeHistoryTable({ trades }: { trades: SerializedTrade[] }) {
               return (
                 <React.Fragment key={trade.id}>
                 <tr
+                  id={`trade-row-${trade.id}`}
                   onClick={() => toggleTrade(trade.id)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {

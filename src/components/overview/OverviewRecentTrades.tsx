@@ -114,11 +114,11 @@ export function OverviewRecentTrades({ trades }: { trades: SerializedTrade[] }) 
 
                   <div className="whitespace-nowrap font-mono text-sm text-text-secondary">{formatDuration(trade.holdDuration, locale)}</div>
 
-                  <div className="font-mono text-sm text-red tabular-nums lg:text-right">
+                  <div className="whitespace-nowrap font-mono text-sm text-red tabular-nums lg:text-right">
                     {formatMoney(-Math.abs(trade.fee))}
                   </div>
 
-                  <div className={`font-mono text-sm font-semibold tabular-nums ${trade.realizedPnl >= 0 ? "text-green" : "text-red"}`}>
+                  <div className={`whitespace-nowrap font-mono text-sm font-semibold tabular-nums lg:text-right ${trade.realizedPnl >= 0 ? "text-green" : "text-red"}`}>
                     {formatMoney(trade.realizedPnl)}
                   </div>
 

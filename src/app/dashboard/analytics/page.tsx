@@ -53,7 +53,10 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-4">
-      {/* Section 1: Summary Cards */}
+      {/* Section 1: Statistics Panel */}
+      <StatisticsPanel stats={statistics} />
+
+      {/* Section 2: Summary Strip */}
       <SummaryCards
         totalTrades={metrics.totalTrades}
         avgHold={metrics.avgHoldDuration}
@@ -63,9 +66,6 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         longCount={longsBreakdown.count}
         shortCount={shortsBreakdown.count}
       />
-
-      {/* Section 2: Statistics Panel */}
-      <StatisticsPanel stats={statistics} />
 
       {/* Section 3: Longs Breakdown */}
       <SideBreakdown data={longsBreakdown} />

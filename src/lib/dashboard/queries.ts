@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { subDays, startOfDay, endOfDay } from "date-fns";
 import { type TradeRange } from "@/lib/formatters";
+import { getMonthDateRange } from "@/lib/dashboard/calendar-transforms";
 import {
   ACCOUNTING_WINDOW_TOLERANCE_MS,
   applyAccountFlowAccountingToTrades,
@@ -32,6 +33,39 @@ export async function getTradesInRange(
       },
     },
     orderBy: { exitTime: "desc" },
+  });
+
+  return applyAccountFlowAccountingToTrades(
+    trades,
+    await getAccountingFlowsForTrades(trades)
+  );
+}
+
+export async function getTradesForMonth(
+  month: string,
+  exchangeId?: string
+) {
+  const { start, end } = getMonthDateRange(month);
+
+  const where: Prisma.TradeWhereInput = {
+    exitTime: {
+      gte: start,
+      lt: end,
+    },
+  };
+
+  if (exchangeId) {
+    where.exchangeId = exchangeId;
+  }
+
+  const trades = await prisma.trade.findMany({
+    where,
+    include: {
+      exchange: {
+        select: { name: true },
+      },
+    },
+    orderBy: { exitTime: "asc" },
   });
 
   return applyAccountFlowAccountingToTrades(
