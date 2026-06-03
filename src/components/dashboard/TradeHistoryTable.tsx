@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { TradeDetailPanel } from "./TradeDetailPanel";
-import { InfoHint } from "@/components/ui/InfoHint";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { template } from "@/lib/i18n";
 import {
@@ -39,6 +38,62 @@ export interface SerializedTrade {
 }
 
 const PAGE_SIZE = TRADE_HISTORY_PAGE_SIZE;
+const TRADE_GRID_COLUMNS = "lg:grid-cols-[0.12fr_1fr_0.52fr_0.76fr_0.95fr_0.76fr_0.95fr_1.02fr_0.78fr_0.72fr_0.85fr_0.64fr]";
+
+function formatTradeReturn(pnl: number, notional: number): string {
+  if (!Number.isFinite(notional) || notional === 0) return "--";
+  const value = (pnl / Math.abs(notional)) * 100;
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+}
+
+function getMutedMoneyClass(value: number): string {
+  return `whitespace-nowrap font-mono text-sm font-medium tabular-nums opacity-70 lg:text-right ${value >= 0 ? "text-green" : "text-red"}`;
+}
+
+function getEmphasisMoneyClass(value: number): string {
+  return `whitespace-nowrap font-mono text-[15px] font-bold tabular-nums lg:text-right ${value >= 0 ? "text-green" : "text-red"}`;
+}
+
+function getDurationParts(seconds: number, locale: "zh" | "en"): Array<{ value: number; unit: string }> {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const units = locale === "zh"
+    ? { hour: "小时", minute: "分", second: "秒" }
+    : { hour: "h", minute: "m", second: "s" };
+
+  if (h > 0) {
+    return [
+      { value: h, unit: units.hour },
+      { value: m, unit: units.minute },
+      { value: s, unit: units.second },
+    ];
+  }
+
+  if (m > 0) {
+    return [
+      { value: m, unit: units.minute },
+      { value: s, unit: units.second },
+    ];
+  }
+
+  return [{ value: s, unit: units.second }];
+}
+
+function DurationCell({ seconds, locale }: { seconds: number; locale: "zh" | "en" }) {
+  return (
+    <div className="whitespace-nowrap text-sm text-text-secondary">
+      <span className="inline-flex min-w-[7.5rem] items-baseline justify-start gap-1.5">
+        {getDurationParts(seconds, locale).map((part) => (
+          <span key={part.unit} className="inline-flex items-baseline gap-0.5">
+            <span className="min-w-[2ch] text-right font-mono tabular-nums text-text-secondary">{part.value}</span>
+            <span className="font-sans text-[12px] font-medium text-text-muted">{part.unit}</span>
+          </span>
+        ))}
+      </span>
+    </div>
+  );
+}
 
 export function TradeHistoryTable({
   trades,
@@ -49,6 +104,8 @@ export function TradeHistoryTable({
 }) {
   const { dictionary, locale } = useI18n();
   const text = dictionary.tradeHistory;
+  const fundingFeeLabel = locale === "zh" ? "资金费率" : "Funding";
+  const returnLabel = locale === "zh" ? "盈亏率" : "Return";
   const [currentPage, setCurrentPage] = useState(() =>
     getInitialTradeHistoryPage(trades.map((trade) => trade.id), focusedTradeId, PAGE_SIZE)
   );
@@ -145,141 +202,114 @@ export function TradeHistoryTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[940px] text-sm">
-          <caption className="sr-only">{text.caption}</caption>
-          <thead>
-            <tr className="border-b border-border bg-bg-tertiary/42">
-              <th scope="col" className="px-5 py-3 text-left text-[11px] font-semibold text-text-muted">
-                <span className="inline-flex items-center gap-1.5">
-                  {text.columns.symbolSize}
-                  <InfoHint label={text.sizeHelp} />
-                </span>
-              </th>
-              <th scope="col" className="px-5 py-3 text-center text-[11px] font-semibold text-text-muted">{text.columns.open}</th>
-              <th scope="col" className="px-5 py-3 text-center text-[11px] font-semibold text-text-muted">{text.columns.holdTime}</th>
-              <th scope="col" className="px-5 py-3 text-center text-[11px] font-semibold text-text-muted">{text.columns.close}</th>
-              <th scope="col" className="px-5 py-3 text-right text-[11px] font-semibold text-text-muted">{text.columns.fee}</th>
-              <th scope="col" className="px-5 py-3 text-right text-[11px] font-semibold text-text-muted">{text.columns.realisedPnl}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageTrades.map((trade) => {
-              const entry = formatTradeDateTimeParts(trade.entryTime, locale);
-              const exit = formatTradeDateTimeParts(trade.exitTime, locale);
-              const detailId = `trade-detail-${trade.id}`;
+        <div className="w-full text-sm">
+          <div className={`hidden ${TRADE_GRID_COLUMNS} gap-3 border-b border-border bg-bg-tertiary/42 px-5 py-3 text-[11px] font-semibold text-text-muted lg:grid`}>
+            <div />
+            <div>{text.columns.symbolSize}</div>
+            <div>{dictionary.common.type}</div>
+            <div>{text.columns.open}</div>
+            <div>{dictionary.common.time}</div>
+            <div>{text.columns.close}</div>
+            <div>{dictionary.common.time}</div>
+            <div>{text.columns.holdTime}</div>
+            <div className="text-right">{fundingFeeLabel}</div>
+            <div className="text-right">{text.columns.fee}</div>
+            <div className="text-right">{text.columns.realisedPnl}</div>
+            <div className="text-right">{returnLabel}</div>
+          </div>
+          {pageTrades.map((trade) => {
+            const isExpanded = expandedId === trade.id;
+            const entry = formatTradeDateTimeParts(trade.entryTime, locale);
+            const exit = formatTradeDateTimeParts(trade.exitTime, locale);
+            const detailId = `trade-detail-${trade.id}`;
+            const tradeReturn = formatTradeReturn(trade.realizedPnl, trade.entryValue);
 
-              return (
-                <React.Fragment key={trade.id}>
-                <tr
+            return (
+              <div key={trade.id}>
+                <button
                   id={`trade-row-${trade.id}`}
+                  type="button"
                   onClick={() => toggleTrade(trade.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      toggleTrade(trade.id);
-                    }
-                  }}
-                  tabIndex={0}
-                  aria-expanded={expandedId === trade.id}
+                  aria-label={template(isExpanded ? text.collapse : text.expand, { symbol: trade.symbol })}
+                  aria-expanded={isExpanded}
                   aria-controls={detailId}
-                  className={`cursor-pointer border-b border-border-light transition-all duration-150 hover:bg-bg-hover/52 focus-visible:bg-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow/50 ${
-                    expandedId === trade.id ? "bg-bg-hover/82 shadow-[inset_3px_0_0_var(--yellow)]" : ""
+                  className={`grid w-full grid-cols-1 gap-3 border-b border-border-light px-5 py-4 text-left transition-colors hover:bg-bg-hover/52 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow/50 ${TRADE_GRID_COLUMNS} lg:items-center ${
+                    isExpanded ? "bg-bg-hover/82 shadow-[inset_3px_0_0_var(--yellow)]" : ""
                   }`}
                 >
-                  {/* Symbol/Size */}
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        aria-label={template(expandedId === trade.id ? text.collapse : text.expand, { symbol: trade.symbol })}
-                        aria-expanded={expandedId === trade.id}
-                        aria-controls={detailId}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          toggleTrade(trade.id);
-                        }}
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-border bg-bg-tertiary text-xs font-bold text-text-secondary transition-colors hover:border-yellow/40 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
-                      >
-                        <span className={`transition-transform ${expandedId === trade.id ? "rotate-90" : ""}`}>
-                          &gt;
-                        </span>
-                      </button>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-text-primary">{trade.symbol}</span>
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                            trade.side === "Long"
-                              ? "bg-green-dim text-green"
-                              : "bg-red-dim text-red"
-                          }`}>
-                            {trade.side === "Long" ? dictionary.common.long : dictionary.common.short}
-                          </span>
-                        </div>
-                        <div className={`font-mono text-xs tabular-nums ${trade.side === "Long" ? "text-green" : "text-red"}`}>
-                          {formatSignedPositionNotional(trade.entryValue, trade.side)}
-                        </div>
-                      </div>
+                  <span className={`hidden text-text-muted transition-transform lg:block ${isExpanded ? "rotate-90 text-yellow" : ""}`}>
+                    &gt;
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-text-primary">{trade.symbol}</span>
                     </div>
-                  </td>
+                    <div className={`mt-1 font-mono text-xs tabular-nums ${trade.side === "Long" ? "text-green" : "text-red"}`}>
+                      {formatSignedPositionNotional(trade.entryValue, trade.side)}
+                    </div>
+                  </div>
 
-                  {/* Open */}
-                  <td className="px-5 py-4 text-center">
-                    <div className="font-mono font-semibold text-text-primary text-sm">
-                      {formatTradePrice(trade.entryPrice)}
-                    </div>
-                    <div className="mt-1 flex items-center justify-center gap-1.5 font-mono text-[11px] font-medium text-text-secondary tabular-nums" title={entry.full}>
-                      <span>{entry.date}</span>
-                      <span className="text-text-muted/70">-</span>
-                      <span>{entry.time}</span>
-                    </div>
-                  </td>
+                  <div>
+                    <span className={`whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold ${trade.side === "Long" ? "bg-green-dim text-green" : "bg-red-dim text-red"}`}>
+                      {trade.side === "Long" ? dictionary.common.long : dictionary.common.short}
+                    </span>
+                  </div>
 
-                  {/* Hold Time */}
-                  <td className="px-5 py-4 text-center font-mono text-text-secondary text-sm">
-                    {formatDuration(trade.holdDuration, locale)}
-                  </td>
+                  <div className="font-mono text-sm font-semibold text-text-primary tabular-nums">
+                    {formatTradePrice(trade.entryPrice)}
+                  </div>
 
-                  {/* Close */}
-                  <td className="px-5 py-4 text-center">
-                    <div className="font-mono font-semibold text-text-primary text-sm">
-                      {formatTradePrice(trade.exitPrice)}
-                    </div>
-                    <div className="mt-1 flex items-center justify-center gap-1.5 font-mono text-[11px] font-medium text-text-secondary tabular-nums" title={exit.full}>
-                      <span>{exit.date}</span>
-                      <span className="text-text-muted/70">-</span>
-                      <span>{exit.time}</span>
-                    </div>
-                  </td>
+                  <div className="grid justify-items-start gap-0.5 font-mono text-sm font-semibold leading-tight tabular-nums" title={entry.full}>
+                    <span className="font-sans text-[11px] font-semibold text-text-muted lg:hidden">{text.columns.open}</span>
+                    <span className="text-text-secondary">{entry.date}</span>
+                    <span className="text-text-muted">{entry.time}</span>
+                  </div>
 
-                  {/* Fee */}
-                  <td className="px-5 py-4 text-right font-mono text-red text-sm">
+                  <div className="font-mono text-sm font-semibold text-text-primary tabular-nums">
+                    {formatTradePrice(trade.exitPrice)}
+                  </div>
+
+                  <div className="grid justify-items-start gap-0.5 font-mono text-sm font-semibold leading-tight tabular-nums" title={exit.full}>
+                    <span className="font-sans text-[11px] font-semibold text-text-muted lg:hidden">{text.columns.close}</span>
+                    <span className="text-text-secondary">{exit.date}</span>
+                    <span className="text-text-muted">{exit.time}</span>
+                  </div>
+
+                  <div>
+                    <DurationCell seconds={trade.holdDuration} locale={locale} />
+                  </div>
+
+                  <div className={getMutedMoneyClass(trade.fundingFee)}>
+                    {formatMoney(trade.fundingFee)}
+                  </div>
+
+                  <div className="whitespace-nowrap font-mono text-sm font-medium text-red opacity-70 tabular-nums lg:text-right">
                     {formatMoney(-Math.abs(trade.fee))}
-                  </td>
+                  </div>
 
-                  {/* Realised PNL */}
-                  <td className={`px-5 py-4 text-right font-mono font-semibold text-sm ${
-                    trade.realizedPnl >= 0 ? "text-green" : "text-red"
-                  }`}>
+                  <div className={getEmphasisMoneyClass(trade.realizedPnl)}>
                     {formatMoney(trade.realizedPnl)}
-                  </td>
-                </tr>
-                {expandedId === trade.id && (
-                  <tr id={detailId}>
-                    <td colSpan={6} className="p-0">
-                      <TradeDetailPanel trade={trade} />
-                    </td>
-                  </tr>
+                  </div>
+
+                  <div className={`font-mono text-[15px] font-bold tabular-nums lg:text-right ${trade.realizedPnl >= 0 ? "text-green" : "text-red"}`}>
+                    {tradeReturn}
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div id={detailId} className="border-b border-border-light bg-bg-primary">
+                    <TradeDetailPanel trade={trade} />
+                  </div>
                 )}
-              </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+              </div>
+            );
+          })}
         {pageTrades.length === 0 && (
           <div className="px-5 py-10 text-center text-sm font-medium text-text-muted">
             {text.empty}
           </div>
         )}
+        </div>
       </div>
 
       {totalPages > 1 && (
