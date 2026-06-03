@@ -137,6 +137,16 @@ export async function OverviewDashboard({
   const periodPnl = latestPoint?.value ?? metrics.totalPnl;
   const returnPct = optionalNumber(latestPoint, "returnPct");
   const needsRiskAttention = metrics.maxConsecutiveLosses >= 3 || metrics.maxDrawdown > Math.max(100, Math.abs(periodPnl) * 0.2);
+  const curveStatusText = returnPct === undefined
+    ? (needsRiskAttention ? text.riskWatch : text.riskGood)
+    : formatPercent(returnPct);
+  const curveStatusClass = returnPct === undefined
+    ? "text-sm font-semibold text-text-muted"
+    : `font-mono text-base font-bold tabular-nums sm:text-lg ${
+        returnPct >= 0
+          ? "text-yellow drop-shadow-[0_0_10px_rgba(245,179,26,0.35)]"
+          : "text-red drop-shadow-[0_0_10px_rgba(255,90,95,0.32)]"
+      }`;
   const recentTrades = [...trades]
     .sort((a, b) => b.exitTime.getTime() - a.exitTime.getTime())
     .slice(0, 6)
@@ -197,8 +207,8 @@ export async function OverviewDashboard({
               <div className={`font-mono text-lg font-bold tabular-nums ${periodPnl >= 0 ? "text-green" : "text-red"}`}>
                 {formatMoney(periodPnl)}
               </div>
-              <div className="mt-1 text-xs font-medium text-text-muted">
-                {returnPct === undefined ? (needsRiskAttention ? text.riskWatch : text.riskGood) : formatPercent(returnPct)}
+              <div className={`mt-2 ${curveStatusClass}`}>
+                {curveStatusText}
               </div>
             </div>
           </div>
