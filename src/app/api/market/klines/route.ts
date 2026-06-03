@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import {
+  bybitIntervalForKlineInterval,
   buildKlineRequestWindow,
+  parseBybitKlines,
   parseBinanceKlines,
 } from "@/lib/market/klines";
 
@@ -15,9 +17,9 @@ export async function GET(request: Request) {
   const startTime = Number(searchParams.get("startTime"));
   const endTime = Number(searchParams.get("endTime"));
 
-  if (exchange !== "binance") {
+  if (!["binance", "bybit"].includes(exchange)) {
     return NextResponse.json(
-      { success: false, message: "Only Binance futures klines are supported" },
+      { success: false, message: "Only Binance and Bybit futures klines are supported" },
       { status: 400 }
     );
   }
@@ -30,23 +32,39 @@ export async function GET(request: Request) {
   }
 
   const klineWindow = buildKlineRequestWindow(startTime, endTime);
-  const url = new URL("https://fapi.binance.com/fapi/v1/klines");
+  const url = exchange === "bybit"
+    ? new URL("https://api.bybit.com/v5/market/kline")
+    : new URL("https://fapi.binance.com/fapi/v1/klines");
   url.searchParams.set("symbol", symbol);
-  url.searchParams.set("interval", klineWindow.interval);
-  url.searchParams.set("startTime", String(klineWindow.startTime));
-  url.searchParams.set("endTime", String(klineWindow.endTime));
+  url.searchParams.set(
+    "interval",
+    exchange === "bybit"
+      ? bybitIntervalForKlineInterval(klineWindow.interval)
+      : klineWindow.interval
+  );
+  if (exchange === "bybit") {
+    url.searchParams.set("category", "linear");
+    url.searchParams.set("start", String(klineWindow.startTime));
+    url.searchParams.set("end", String(klineWindow.endTime));
+  } else {
+    url.searchParams.set("startTime", String(klineWindow.startTime));
+    url.searchParams.set("endTime", String(klineWindow.endTime));
+  }
   url.searchParams.set("limit", "1000");
 
   try {
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) {
       return NextResponse.json(
-        { success: false, message: `Binance klines request failed: ${response.status}` },
+        { success: false, message: `${exchange} klines request failed: ${response.status}` },
         { status: 502 }
       );
     }
 
-    const candles = parseBinanceKlines(await response.json());
+    const payload = await response.json();
+    const candles = exchange === "bybit"
+      ? parseBybitKlines(payload)
+      : parseBinanceKlines(payload);
     return NextResponse.json({
       success: true,
       data: {
@@ -57,7 +75,7 @@ export async function GET(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown market data error";
     return NextResponse.json(
-      { success: false, message: `Failed to fetch Binance klines: ${message}` },
+      { success: false, message: `Failed to fetch ${exchange} klines: ${message}` },
       { status: 502 }
     );
   }

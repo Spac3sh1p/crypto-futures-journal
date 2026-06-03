@@ -96,20 +96,50 @@ export async function POST(
 
     // Batch insert trades, skip duplicates via composite unique (exchangeId + externalId)
     let tradesAdded = 0;
+    let tradesUpdated = 0;
     let insertErrors = 0;
     let accountFlowsAdded = 0;
     let accountFlowInsertErrors = 0;
 
     // Get existing externalIds for this exchange to skip duplicates
-    const existingIds = new Set(
-      (await prisma.trade.findMany({
-        where: { exchangeId: id },
-        select: { externalId: true },
-      })).map((t) => t.externalId)
+    const existingTrades = await prisma.trade.findMany({
+      where: { exchangeId: id },
+      select: {
+        id: true,
+        externalId: true,
+        fee: true,
+        makerFee: true,
+        takerFee: true,
+      },
+    });
+    const existingTradesByExternalId = new Map(
+      existingTrades.map((trade) => [trade.externalId, trade])
     );
 
     // Filter to only new trades
-    const newTrades = rawTrades.filter((raw) => !existingIds.has(raw.externalId));
+    const newTrades = rawTrades.filter((raw) => !existingTradesByExternalId.has(raw.externalId));
+
+    for (const raw of rawTrades) {
+      const existingTrade = existingTradesByExternalId.get(raw.externalId);
+      if (!existingTrade) continue;
+      if (
+        existingTrade.fee === raw.fee &&
+        existingTrade.makerFee === raw.makerFee &&
+        existingTrade.takerFee === raw.takerFee
+      ) {
+        continue;
+      }
+
+      await prisma.trade.update({
+        where: { id: existingTrade.id },
+        data: {
+          fee: raw.fee,
+          makerFee: raw.makerFee,
+          takerFee: raw.takerFee,
+        },
+      });
+      tradesUpdated++;
+    }
 
     // Insert in batches of 50 within a transaction
     const BATCH_SIZE = 50;
@@ -206,11 +236,14 @@ export async function POST(
     const flowMessage = exchange.name === "binance"
       ? ` Synced ${accountFlowsAdded} account flows from ${rawAccountFlows.length} fetched.`
       : "";
+    const updateMessage = tradesUpdated > 0
+      ? ` Updated ${tradesUpdated} existing trade${tradesUpdated === 1 ? "" : "s"} fees.`
+      : "";
     const message = totalInsertErrors > 0
       ? `Imported ${tradesAdded} trades, ${insertErrors} failed. Fetched ${rawTrades.length} total. lastSync NOT advanced — retry will re-fetch failed trades.`
-      : `Imported ${tradesAdded} new trades from ${rawTrades.length} fetched.${flowMessage}`;
+      : `Imported ${tradesAdded} new trades from ${rawTrades.length} fetched.${updateMessage}${flowMessage}`;
     const detailedMessage = totalInsertErrors > 0
-      ? `Imported ${tradesAdded} trades and ${accountFlowsAdded} account flows; ${totalInsertErrors} inserts failed. Fetched ${rawTrades.length} trades and ${rawAccountFlows.length} flows. lastSync NOT advanced - retry will re-fetch failed records.`
+      ? `Imported ${tradesAdded} trades and ${accountFlowsAdded} account flows; updated ${tradesUpdated} existing trades; ${totalInsertErrors} inserts failed. Fetched ${rawTrades.length} trades and ${rawAccountFlows.length} flows. lastSync NOT advanced - retry will re-fetch failed records.`
       : message;
 
     // Only advance lastSync on full success to avoid skipping failed trades
@@ -235,6 +268,7 @@ export async function POST(
       success: true,
       data: {
         tradesAdded,
+        tradesUpdated,
         totalFetched: rawTrades.length,
         duplicatesSkipped: rawTrades.length - newTrades.length,
         accountFlowsAdded,

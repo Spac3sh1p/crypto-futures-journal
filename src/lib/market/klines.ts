@@ -1,4 +1,5 @@
 export type BinanceKlineInterval = "1m" | "5m" | "15m" | "1h" | "4h";
+export type BybitKlineInterval = "1" | "5" | "15" | "60" | "240";
 
 export interface MarketCandle {
   time: number;
@@ -161,4 +162,49 @@ export function parseBinanceKlines(rows: unknown): MarketCandle[] {
 
     return [{ time, open, high, low, close }];
   });
+}
+
+export function bybitIntervalForKlineInterval(interval: BinanceKlineInterval): BybitKlineInterval {
+  switch (interval) {
+    case "1m":
+      return "1";
+    case "5m":
+      return "5";
+    case "15m":
+      return "15";
+    case "1h":
+      return "60";
+    case "4h":
+      return "240";
+  }
+}
+
+export function parseBybitKlines(response: unknown): MarketCandle[] {
+  const rows = response && typeof response === "object" && "result" in response
+    ? (response as { result?: { list?: unknown } }).result?.list
+    : null;
+
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  return rows
+    .flatMap((row) => {
+      if (!Array.isArray(row)) {
+        return [];
+      }
+
+      const time = toFiniteNumber(row[0]);
+      const open = toFiniteNumber(row[1]);
+      const high = toFiniteNumber(row[2]);
+      const low = toFiniteNumber(row[3]);
+      const close = toFiniteNumber(row[4]);
+
+      if (time === null || open === null || high === null || low === null || close === null) {
+        return [];
+      }
+
+      return [{ time, open, high, low, close }];
+    })
+    .sort((a, b) => a.time - b.time);
 }

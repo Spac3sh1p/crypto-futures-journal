@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  bybitIntervalForKlineInterval,
   buildKlineRequestWindow,
   calculateTradeExcursion,
   chooseKlineInterval,
+  parseBybitKlines,
   parseBinanceKlines,
 } from "@/lib/market/klines";
 
@@ -73,6 +75,43 @@ describe("market kline helpers", () => {
         high: 0.182,
         low: 0.171,
         close: 0.1744,
+      },
+    ]);
+  });
+
+  it("maps readable kline intervals to Bybit API interval values", () => {
+    expect(bybitIntervalForKlineInterval("1m")).toBe("1");
+    expect(bybitIntervalForKlineInterval("5m")).toBe("5");
+    expect(bybitIntervalForKlineInterval("15m")).toBe("15");
+    expect(bybitIntervalForKlineInterval("1h")).toBe("60");
+    expect(bybitIntervalForKlineInterval("4h")).toBe("240");
+  });
+
+  it("parses Bybit futures kline responses into ascending numeric OHLC candles", () => {
+    const candles = parseBybitKlines({
+      retCode: 0,
+      result: {
+        list: [
+          ["1779959949000", "591.97", "593.12", "589.40", "590.11", "10", "5900"],
+          ["1779959889000", "621.44", "623.00", "590.00", "591.97", "12", "7300"],
+        ],
+      },
+    });
+
+    expect(candles).toEqual([
+      {
+        time: 1_779_959_889_000,
+        open: 621.44,
+        high: 623,
+        low: 590,
+        close: 591.97,
+      },
+      {
+        time: 1_779_959_949_000,
+        open: 591.97,
+        high: 593.12,
+        low: 589.4,
+        close: 590.11,
       },
     ]);
   });

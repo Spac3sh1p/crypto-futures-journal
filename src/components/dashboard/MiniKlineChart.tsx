@@ -50,6 +50,7 @@ const GRID_MINOR = "#182235";
 const CHART_BG = "#080f1b";
 const PRICE_SCALE_BG = "#0c1422";
 const AXIS_TEXT = "#7b8798";
+const SUPPORTED_KLINE_EXCHANGES = new Set(["binance", "bybit"]);
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -134,7 +135,7 @@ export function MiniKlineChart({
   const entryMs = Date.parse(entryTime);
   const exitMs = Date.parse(exitTime);
   const validationMessage =
-    normalizedExchange !== "binance"
+    !SUPPORTED_KLINE_EXCHANGES.has(normalizedExchange)
       ? text.unsupportedExchange
       : !symbol || !Number.isFinite(entryMs) || !Number.isFinite(exitMs)
         ? text.invalidTrade
