@@ -4,7 +4,6 @@ import { calculateMetrics } from "@/lib/analysis";
 import {
   getAccountFlowsForCurve,
   getRangeStartDate,
-  getTodayPnl,
   getTradesInRange,
 } from "@/lib/dashboard/queries";
 import {
@@ -15,6 +14,7 @@ import {
   formatMoney,
   parseRange,
 } from "@/lib/formatters";
+import { getWalletBalance } from "@/lib/exchange/balance";
 import { getServerDictionary } from "@/lib/i18n-server";
 import { OverviewCurveChart } from "@/components/overview/OverviewCurveChart";
 import { OverviewRecentTrades } from "@/components/overview/OverviewRecentTrades";
@@ -58,6 +58,11 @@ function formatPercent(value: number | undefined): string {
   if (value === undefined) return "--";
   const digits = Math.abs(value) >= 100 ? 0 : 1;
   return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%`;
+}
+
+function formatBalance(value: number): string {
+  const prefix = value < 0 ? "-$" : "$";
+  return `${prefix}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function optionalNumber(value: unknown, key: string): number | undefined {
@@ -114,10 +119,15 @@ export async function OverviewDashboard({
   const dictionary = await getServerDictionary();
   const text = dictionary.overview;
 
-  const trades = await getTradesInRange(range, exchangeId);
-  const accountFlows = await getAccountFlowsForCurve(exchangeId);
-  const todayPnl = await getTodayPnl(exchangeId);
+  const [trades, accountFlows, walletBalance] = await Promise.all([
+    getTradesInRange(range, exchangeId),
+    getAccountFlowsForCurve(exchangeId),
+    getWalletBalance(exchangeId),
+  ]);
   const metrics = calculateMetrics(trades);
+  const balanceValue = walletBalance.total === null
+    ? "--"
+    : formatBalance(walletBalance.total);
 
   const rangeStart = getRangeStartDate(range);
   const curve = accountFlows.length > 0
@@ -149,10 +159,9 @@ export async function OverviewDashboard({
           tone={periodPnl >= 0 ? "green" : "red"}
         />
         <KpiTile
-          label={text.todayPnl}
-          value={formatMoney(todayPnl)}
-          subValue={todayPnl >= 0 ? dictionary.common.win : dictionary.common.loss}
-          tone={todayPnl >= 0 ? "green" : "red"}
+          label={text.balance}
+          value={balanceValue}
+          tone={walletBalance.total !== null && walletBalance.total >= 0 ? "green" : "neutral"}
         />
         <KpiTile
           label={text.winRate}

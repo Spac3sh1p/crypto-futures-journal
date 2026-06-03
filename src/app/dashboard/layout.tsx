@@ -1,16 +1,19 @@
 import { Suspense } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
+import { getExchanges } from "@/lib/dashboard/queries";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const exchanges = await getExchanges();
+
   return (
     <div className="flex h-full bg-bg-primary">
       <Suspense>
-        <Sidebar />
+        <Sidebar exchanges={exchanges} />
       </Suspense>
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Suspense>

@@ -68,14 +68,79 @@ const navItems = [
   { href: "/dashboard/settings", id: "settings", labelKey: "settings" as const, Icon: IconSettings },
 ];
 
-export function Sidebar() {
+interface SidebarExchange {
+  id: string;
+  name: string;
+  label: string | null;
+  isActive: boolean;
+  _count?: {
+    trades: number;
+  };
+}
+
+function formatExchangeName(name: string): string {
+  const normalized = name.toLowerCase();
+  if (normalized === "bybit") return "Bybit";
+  if (normalized === "binance") return "Binance";
+  if (normalized === "hyperliquid") return "Hyperliquid";
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function exchangeAccent(name: string): { bg: string; text: string; mark: string } {
+  const normalized = name.toLowerCase();
+  if (normalized === "bybit") {
+    return { bg: "bg-yellow/12", text: "text-yellow", mark: "Y" };
+  }
+  if (normalized === "hyperliquid") {
+    return { bg: "bg-green-dim", text: "text-green", mark: "H" };
+  }
+  return { bg: "bg-yellow/12", text: "text-yellow", mark: "B" };
+}
+
+function buildScopedHref(baseHref: string, searchParams: URLSearchParams): string {
+  const [path, rawQuery] = baseHref.split("?");
+  const params = new URLSearchParams(rawQuery ?? "");
+  const exchangeId = searchParams.get("exchangeId");
+  const range = searchParams.get("range");
+  const month = searchParams.get("month");
+
+  if (exchangeId) params.set("exchangeId", exchangeId);
+  if (range && (path.includes("/performance") || path.includes("/analytics"))) {
+    params.set("range", range);
+  }
+  if (month && path.includes("/calendar")) {
+    params.set("month", month);
+  }
+
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+export function Sidebar({ exchanges = [] }: { exchanges?: SidebarExchange[] }) {
   const { dictionary, locale } = useI18n();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchParamString = searchParams.toString();
   const currentView = searchParams.get("view");
+  const selectedExchangeId = searchParams.get("exchangeId");
   const sourceText = locale === "zh"
-    ? { version: "专业版 v4.0", source: "数据源", market: "Binance", scope: "U 本位合约", sync: "本地只读同步" }
-    : { version: "Pro v4.0", source: "Data Source", market: "Binance", scope: "USDT Futures", sync: "Local read-only sync" };
+    ? { version: "专业版 v4.0", source: "数据源", all: "全部交易所", allScope: "汇总交易记录", futures: "U 本位合约", sync: "本地只读同步", empty: "暂无交易所连接", trades: "笔交易" }
+    : { version: "Pro v4.0", source: "Data Source", all: "All exchanges", allScope: "Combined trade records", futures: "USDT Futures", sync: "Local read-only sync", empty: "No exchange connected", trades: "trades" };
+
+  const activeExchanges = exchanges.filter((exchange) => exchange.isActive);
+  const selectedExchange = activeExchanges.find((exchange) => exchange.id === selectedExchangeId);
+
+  function buildExchangeHref(exchangeId: string | null): string {
+    const params = new URLSearchParams(searchParamString);
+    if (exchangeId) {
+      params.set("exchangeId", exchangeId);
+    } else {
+      params.delete("exchangeId");
+    }
+    params.delete("tradeId");
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }
 
   return (
     <aside className="flex h-full w-20 shrink-0 flex-col border-r border-border bg-[linear-gradient(180deg,rgba(13,23,37,0.98),rgba(7,16,27,0.98))] sm:w-64">
@@ -110,7 +175,7 @@ export function Sidebar() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={buildScopedHref(item.href, new URLSearchParams(searchParamString))}
               title={label}
               aria-current={isActive ? "page" : undefined}
               className={`relative flex items-center justify-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 sm:justify-start ${
@@ -129,19 +194,64 @@ export function Sidebar() {
       <div className="hidden p-4 sm:block">
         <div className="rounded-xl border border-border bg-bg-tertiary/78 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">{sourceText.source}</div>
-          <div className="mt-3 flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-yellow/12 text-yellow">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                <path d="M12 3l3.4 3.4L12 9.8 8.6 6.4 12 3zM6.4 8.6L9.8 12l-3.4 3.4L3 12l3.4-3.4zM17.6 8.6L21 12l-3.4 3.4L14.2 12l3.4-3.4zM12 14.2l3.4 3.4L12 21l-3.4-3.4 3.4-3.4z" fill="currentColor" />
-              </svg>
-            </span>
-            <div>
-              <div className="text-sm font-semibold text-text-primary">{sourceText.market}</div>
-              <div className="text-[11px] font-medium text-text-muted">{sourceText.scope}</div>
-            </div>
+          <div className="mt-3 space-y-2">
+            <Link
+              href={buildExchangeHref(null)}
+              aria-current={!selectedExchangeId ? "true" : undefined}
+              className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 ${
+                !selectedExchangeId
+                  ? "border-yellow/30 bg-yellow/12 text-text-primary"
+                  : "border-border-light bg-bg-primary/40 text-text-secondary hover:border-yellow/30 hover:text-text-primary"
+              }`}
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-text-muted/10 text-text-secondary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{sourceText.all}</span>
+                <span className="block truncate text-[11px] font-medium text-text-muted">{sourceText.allScope}</span>
+              </span>
+            </Link>
+
+            {activeExchanges.length === 0 ? (
+              <div className="rounded-lg border border-border-light bg-bg-primary/35 px-3 py-2 text-[11px] font-medium text-text-muted">
+                {sourceText.empty}
+              </div>
+            ) : (
+              activeExchanges.map((exchange) => {
+                const isSelected = exchange.id === selectedExchangeId;
+                const accent = exchangeAccent(exchange.name);
+                const displayName = formatExchangeName(exchange.name);
+                const title = exchange.label ? `${displayName} · ${exchange.label}` : displayName;
+                return (
+                  <Link
+                    key={exchange.id}
+                    href={buildExchangeHref(exchange.id)}
+                    aria-current={isSelected ? "true" : undefined}
+                    className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 ${
+                      isSelected
+                        ? "border-yellow/30 bg-[linear-gradient(90deg,rgba(245,179,26,0.16),rgba(245,179,26,0.05))] text-text-primary shadow-[inset_3px_0_0_var(--yellow)]"
+                        : "border-border-light bg-bg-primary/40 text-text-secondary hover:border-yellow/30 hover:text-text-primary"
+                    }`}
+                  >
+                    <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${accent.bg} ${accent.text}`}>
+                      <span className="text-[11px] font-bold">{accent.mark}</span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{title}</span>
+                      <span className="block truncate text-[11px] font-medium text-text-muted">
+                        {exchange._count?.trades ?? 0} {sourceText.trades} · {sourceText.futures}
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })
+            )}
           </div>
           <div className="mt-4 border-t border-border-light pt-3 text-[11px] font-medium text-text-muted">
-            {sourceText.sync}
+            {selectedExchange ? formatExchangeName(selectedExchange.name) : sourceText.sync}
           </div>
         </div>
       </div>

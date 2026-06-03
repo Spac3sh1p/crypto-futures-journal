@@ -130,6 +130,11 @@ export async function getExchanges() {
       name: true,
       label: true,
       isActive: true,
+      _count: {
+        select: {
+          trades: true,
+        },
+      },
     },
     orderBy: { name: "asc" },
   });
