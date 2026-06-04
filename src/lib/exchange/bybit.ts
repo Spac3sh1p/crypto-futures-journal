@@ -4,7 +4,9 @@ import type { ExchangeCredentials, RawTrade, SyncResult } from "./types";
 const BYBIT_CLOSE_PNL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const BYBIT_CLOSE_PNL_LIMIT = 100;
 const BYBIT_EXECUTION_FEE_PADDING_MS = 5 * 60 * 1000;
+const BYBIT_EXECUTION_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000;
 const BYBIT_EXECUTION_LIMIT = 100;
+const BYBIT_QTY_EPSILON = 1e-9;
 
 interface BybitHistoricalPosition {
   symbol?: string;
@@ -23,6 +25,7 @@ interface BybitHistoricalPosition {
 interface BybitExecutionFill {
   symbol?: string;
   timestamp?: number;
+  amount?: number;
   takerOrMaker?: string;
   fee?: { cost?: number };
   info?: Record<string, unknown>;
@@ -126,14 +129,80 @@ function summarizeBybitExecutionFees(
   };
 }
 
-async function fetchBybitExecutionFees(
+function bybitExecutionSide(fill: BybitExecutionFill): string {
+  return String(fill.side ?? fill.info?.side ?? "").toLowerCase();
+}
+
+function bybitOpeningExecutionSide(positionSide: "Long" | "Short"): string {
+  return positionSide === "Long" ? "buy" : "sell";
+}
+
+function deriveBybitEntryTimeFromExecutions(
+  fills: BybitExecutionFill[],
+  symbol: string,
+  positionSide: "Long" | "Short",
+  entryQty: number,
+  exitTime: Date
+): Date | null {
+  if (entryQty <= BYBIT_QTY_EPSILON) return null;
+
+  const openingSide = bybitOpeningExecutionSide(positionSide);
+  const openingFills = fills
+    .filter((fill) => {
+      if (!fill.timestamp || fill.timestamp > exitTime.getTime()) {
+        return false;
+      }
+      if (fill.symbol && normalizeSymbol(fill.symbol) !== symbol) return false;
+      if (bybitExecutionSide(fill) !== openingSide) return false;
+
+      const closedSize = toFiniteNumber(fill.info?.closedSize);
+      return closedSize <= BYBIT_QTY_EPSILON;
+    })
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+  let accumulatedQty = 0;
+  let earliestTime: number | null = null;
+
+  for (const fill of openingFills) {
+    const amount = toFiniteNumber(fill.amount ?? fill.info?.execQty ?? fill.info?.qty);
+    if (amount <= BYBIT_QTY_EPSILON) continue;
+
+    accumulatedQty += amount;
+    if (fill.timestamp) earliestTime = fill.timestamp;
+    if (accumulatedQty >= entryQty - BYBIT_QTY_EPSILON) {
+      return earliestTime ? new Date(earliestTime) : null;
+    }
+  }
+
+  return null;
+}
+
+function bybitClosePnlFees(info: Record<string, unknown>) {
+  const openFee = toFiniteNumber(info.openFee, Number.NaN);
+  const closeFee = toFiniteNumber(info.closeFee, Number.NaN);
+  const hasOpenFee = Number.isFinite(openFee);
+  const hasCloseFee = Number.isFinite(closeFee);
+
+  if (!hasOpenFee && !hasCloseFee) return null;
+
+  const fee = (hasOpenFee ? openFee : 0) + (hasCloseFee ? closeFee : 0);
+  return {
+    fee,
+    makerFee: 0,
+    takerFee: fee,
+  };
+}
+
+async function fetchBybitExecutionSummary(
   exchange: BybitHistoryExchange,
   symbol: string,
   quoteCoin: string,
-  entryTime: Date,
+  positionSide: "Long" | "Short",
+  entryQty: number,
+  fallbackEntryTime: Date,
   exitTime: Date
 ) {
-  const windowStart = Math.max(0, entryTime.getTime() - BYBIT_EXECUTION_FEE_PADDING_MS);
+  const windowStart = Math.max(0, exitTime.getTime() - BYBIT_EXECUTION_LOOKBACK_MS);
   const windowEnd = exitTime.getTime() + BYBIT_EXECUTION_FEE_PADDING_MS;
   const fills = await exchange.fetchMyTrades(
     bybitUnifiedSymbol(symbol, quoteCoin),
@@ -147,7 +216,20 @@ async function fetchBybitExecutionFees(
     }
   );
 
-  return summarizeBybitExecutionFees(fills, symbol, windowStart, windowEnd);
+  const entryTime = deriveBybitEntryTimeFromExecutions(
+    fills,
+    symbol,
+    positionSide,
+    entryQty,
+    exitTime
+  ) ?? fallbackEntryTime;
+  const feeWindowStart = Math.max(0, entryTime.getTime() - BYBIT_EXECUTION_FEE_PADDING_MS);
+  const fees = summarizeBybitExecutionFees(fills, symbol, feeWindowStart, windowEnd);
+
+  return {
+    ...fees,
+    entryTime,
+  };
 }
 
 /**
@@ -187,19 +269,27 @@ export async function fetchBybitTrades(
     const exitQty = toFiniteNumber(info.closedSize ?? position.contracts ?? entryQty, entryQty);
     const exitValue = toFiniteNumber(info.cumExitValue ?? position.notional, exitPrice * exitQty);
     const realizedPnl = toFiniteNumber(position.realizedPnl ?? info.closedPnl);
-    const entryTime = new Date(toFiniteNumber(position.timestamp ?? info.createdTime, Date.now()));
+    const fallbackEntryTime = new Date(toFiniteNumber(position.timestamp ?? info.createdTime, Date.now()));
     const exitTime = new Date(
-      toFiniteNumber(position.lastUpdateTimestamp ?? info.updatedTime, entryTime.getTime())
+      toFiniteNumber(position.lastUpdateTimestamp ?? info.updatedTime, fallbackEntryTime.getTime())
     );
+    const side = bybitPositionSide(position.side ?? String(info.side || ""));
     const orderId = String(info.orderId || "");
     const updatedTime = String(info.updatedTime || position.lastUpdateTimestamp || exitTime.getTime());
-    const fees = await fetchBybitExecutionFees(
+    const executionSummary = await fetchBybitExecutionSummary(
       exchange,
       symbol,
       quoteCoin,
-      entryTime,
+      side,
+      entryQty,
+      fallbackEntryTime,
       exitTime
     );
+    const closePnlFees = bybitClosePnlFees(info);
+    const fees = Math.abs(executionSummary.fee) > BYBIT_QTY_EPSILON
+      ? executionSummary
+      : closePnlFees ?? executionSummary;
+    const entryTime = executionSummary.entryTime;
 
     trades.push({
       externalId: orderId
@@ -208,7 +298,7 @@ export async function fetchBybitTrades(
       symbol,
       baseCoin,
       quoteCoin,
-      side: bybitPositionSide(position.side ?? String(info.side || "")),
+      side,
       leverage: toFiniteNumber(position.leverage, 1),
       marginMode: "cross",
       entryPrice,

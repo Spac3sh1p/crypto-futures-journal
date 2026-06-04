@@ -114,7 +114,7 @@ describe("fetchBybitTrades", () => {
     );
     expect(mockCcxt.fetchMyTrades).toHaveBeenCalledWith(
       "ZEC/USDT:USDT",
-      new Date("2026-06-03T07:33:55.226Z").getTime(),
+      new Date("2026-06-03T11:40:18.560Z").getTime() - 90 * 24 * 60 * 60 * 1000,
       100,
       expect.objectContaining({
         category: "linear",
@@ -145,5 +145,157 @@ describe("fetchBybitTrades", () => {
     });
     expect(trades[0].entryTime.toISOString()).toBe("2026-06-03T07:38:55.226Z");
     expect(trades[0].exitTime.toISOString()).toBe("2026-06-03T11:40:18.560Z");
+  });
+
+  it("keeps Bybit entry details when the position opened before the incremental sync window", async () => {
+    const since = new Date("2026-06-03T00:00:00Z");
+    mockCcxt.fetchPositionsHistory.mockResolvedValue([
+      {
+        symbol: "HYPE/USDT:USDT",
+        timestamp: new Date("2026-05-31T00:35:26.541Z").getTime(),
+        lastUpdateTimestamp: new Date("2026-06-04T10:51:55.653Z").getTime(),
+        side: "short",
+        leverage: 5,
+        entryPrice: 68.7218298,
+        lastPrice: 64.9,
+        contracts: 522.85,
+        notional: 33932.965,
+        realizedPnl: 1998.24370998,
+        info: {
+          orderId: "close-order-1",
+          symbol: "HYPEUSDT",
+          closedSize: "522.85",
+          cumEntryValue: "35931.20871",
+          cumExitValue: "33932.965",
+          createdTime: "1780187726541",
+          updatedTime: "1780531915653",
+          closedPnl: "1998.24370998",
+        },
+      },
+    ]);
+    mockCcxt.fetchMyTrades.mockResolvedValue([
+      {
+        id: "exit-fill",
+        symbol: "HYPE/USDT:USDT",
+        timestamp: new Date("2026-06-04T10:51:55.653Z").getTime(),
+        side: "buy",
+        takerOrMaker: "maker",
+        fee: { cost: 6.786593 },
+        info: {
+          execType: "Trade",
+          orderId: "close-order-1",
+          closedSize: "522.85",
+        },
+      },
+    ]);
+
+    const trades = await fetchBybitTrades(
+      { apiKey: "key", apiSecret: "secret", exchange: "bybit" },
+      since
+    );
+
+    expect(mockCcxt.fetchPositionsHistory).toHaveBeenCalledWith(
+      undefined,
+      since.getTime(),
+      100,
+      expect.objectContaining({
+        subType: "linear",
+        until: new Date("2026-06-04T00:00:00Z").getTime(),
+      })
+    );
+    expect(trades).toHaveLength(1);
+    expect(trades[0]).toMatchObject({
+      externalId: "bybit_closed_pnl_HYPEUSDT_close-order-1_1780531915653",
+      symbol: "HYPEUSDT",
+      side: "Short",
+      entryQty: 522.85,
+      exitQty: 522.85,
+      realizedPnl: 1998.24370998,
+      fee: 6.786593,
+    });
+    expect(trades[0].entryTime.toISOString()).toBe("2026-05-31T00:35:26.541Z");
+    expect(trades[0].exitTime.toISOString()).toBe("2026-06-04T10:51:55.653Z");
+  });
+
+  it("derives Bybit entry time and total fees from executions when close-pnl timestamps point at the close", async () => {
+    const since = new Date("2026-06-04T00:00:00Z");
+    const openTime = new Date("2026-06-04T05:10:24.656Z").getTime();
+    const closeTime = new Date("2026-06-04T05:24:19.513Z").getTime();
+    mockCcxt.fetchPositionsHistory.mockResolvedValue([
+      {
+        symbol: "OPN/USDT:USDT",
+        timestamp: closeTime - 3,
+        lastUpdateTimestamp: closeTime,
+        side: "long",
+        leverage: 10,
+        entryPrice: 0.20648114,
+        lastPrice: 0.20523129,
+        contracts: 6307,
+        notional: 1294.3938,
+        realizedPnl: -9.31086868,
+        info: {
+          orderId: "close-order-1",
+          symbol: "OPNUSDT",
+          side: "Sell",
+          closedSize: "6307",
+          openFee: "0.71625209",
+          closeFee: "0.71191659",
+          cumEntryValue: "1302.2765",
+          cumExitValue: "1294.3938",
+          createdTime: String(closeTime - 3),
+          updatedTime: String(closeTime),
+          closedPnl: "-9.31086868",
+        },
+      },
+    ]);
+    mockCcxt.fetchMyTrades.mockResolvedValue([
+      {
+        id: "open-fill",
+        symbol: "OPN/USDT:USDT",
+        timestamp: openTime,
+        side: "buy",
+        amount: 6307,
+        takerOrMaker: "taker",
+        fee: { cost: 0.71625209 },
+        info: {
+          execType: "Trade",
+          orderId: "open-order-1",
+          closedSize: "0",
+          side: "Buy",
+        },
+      },
+      {
+        id: "close-fill",
+        symbol: "OPN/USDT:USDT",
+        timestamp: closeTime - 3,
+        side: "sell",
+        amount: 6307,
+        takerOrMaker: "taker",
+        fee: { cost: 0.71191659 },
+        info: {
+          execType: "Trade",
+          orderId: "close-order-1",
+          closedSize: "6307",
+          side: "Sell",
+        },
+      },
+    ]);
+
+    const trades = await fetchBybitTrades(
+      { apiKey: "key", apiSecret: "secret", exchange: "bybit" },
+      since
+    );
+
+    expect(trades).toHaveLength(1);
+    expect(trades[0]).toMatchObject({
+      externalId: "bybit_closed_pnl_OPNUSDT_close-order-1_1780550659513",
+      symbol: "OPNUSDT",
+      side: "Long",
+      fee: 1.42816868,
+      makerFee: 0,
+      takerFee: 1.42816868,
+    });
+    expect(trades[0].entryTime.toISOString()).toBe("2026-06-04T05:10:24.656Z");
+    expect(trades[0].exitTime.toISOString()).toBe("2026-06-04T05:24:19.513Z");
   });
 });

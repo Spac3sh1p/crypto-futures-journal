@@ -71,14 +71,25 @@ describe("fetchBinanceTrades", () => {
       symbol === "BTC/USDT:USDT"
         ? [
             {
-              id: "123",
+              id: "open-123",
               symbol: "BTC/USDT:USDT",
               timestamp: since.getTime(),
               price: 100000,
               amount: 0.01,
-              side: "sell",
+              side: "buy",
               takerOrMaker: "taker",
               fee: { cost: 0.5 },
+              info: { orderId: "open-123", realizedPnl: "0" },
+            },
+            {
+              id: "close-123",
+              symbol: "BTC/USDT:USDT",
+              timestamp: since.getTime() + 60_000,
+              price: 101234,
+              amount: 0.01,
+              side: "sell",
+              takerOrMaker: "maker",
+              fee: { cost: 0.1 },
               info: { realizedPnl: "12.34" },
             },
           ]
@@ -93,13 +104,13 @@ describe("fetchBinanceTrades", () => {
     expect(mockCcxt.fetchMyTrades).toHaveBeenCalledTimes(2);
     expect(mockCcxt.fetchMyTrades).toHaveBeenCalledWith(
       "BTC/USDT:USDT",
-      since.getTime(),
+      since.getTime() - 90 * 24 * 60 * 60 * 1000,
       undefined,
       expect.objectContaining({ type: "future" })
     );
     expect(mockCcxt.fetchMyTrades).toHaveBeenCalledWith(
       "ETH/USDT:USDT",
-      since.getTime(),
+      since.getTime() - 90 * 24 * 60 * 60 * 1000,
       undefined,
       expect.objectContaining({ type: "future" })
     );
@@ -111,40 +122,62 @@ describe("fetchBinanceTrades", () => {
     );
     expect(trades).toHaveLength(1);
     expect(trades[0]).toMatchObject({
-      externalId: "binance_order_BTCUSDT_123",
+      externalId: "binance_position_BTCUSDT_open-123_close-123",
       symbol: "BTCUSDT",
       baseCoin: "BTC",
       realizedPnl: 12.34,
     });
   });
 
-  it("aggregates multiple fills from the same Binance futures order into one trade", async () => {
+  it("aggregates multiple fills from Binance futures orders into one closed position", async () => {
     const since = new Date("2026-05-01T00:00:00Z");
     mockCcxt.fapiPrivateGetIncome.mockResolvedValue([
       { symbol: "BTCUSDT", incomeType: "REALIZED_PNL" },
     ]);
     mockCcxt.fetchMyTrades.mockResolvedValue([
       {
-        id: "fill-1",
+        id: "open-fill-1",
         symbol: "BTC/USDT:USDT",
         timestamp: since.getTime(),
         price: 100000,
         amount: 0.01,
-        side: "sell",
+        side: "buy",
         takerOrMaker: "taker",
         fee: { cost: 0.5 },
-        info: { orderId: "order-1", realizedPnl: "12.34" },
+        info: { orderId: "open-order-1", realizedPnl: "0" },
       },
       {
-        id: "fill-2",
+        id: "open-fill-2",
         symbol: "BTC/USDT:USDT",
         timestamp: since.getTime() + 1000,
+        price: 100500,
+        amount: 0.02,
+        side: "buy",
+        takerOrMaker: "maker",
+        fee: { cost: 0.1 },
+        info: { orderId: "open-order-1", realizedPnl: "0" },
+      },
+      {
+        id: "close-fill-1",
+        symbol: "BTC/USDT:USDT",
+        timestamp: since.getTime() + 60_000,
         price: 101000,
+        amount: 0.01,
+        side: "sell",
+        takerOrMaker: "taker",
+        fee: { cost: 0.4 },
+        info: { orderId: "close-order-1", realizedPnl: "10" },
+      },
+      {
+        id: "close-fill-2",
+        symbol: "BTC/USDT:USDT",
+        timestamp: since.getTime() + 61_000,
+        price: 101500,
         amount: 0.02,
         side: "sell",
         takerOrMaker: "maker",
-        fee: { cost: 0.1 },
-        info: { orderId: "order-1", realizedPnl: "7.66" },
+        fee: { cost: 0.2 },
+        info: { orderId: "close-order-1", realizedPnl: "20" },
       },
     ]);
 
@@ -155,18 +188,19 @@ describe("fetchBinanceTrades", () => {
 
     expect(trades).toHaveLength(1);
     expect(trades[0]).toMatchObject({
-      externalId: "binance_order_BTCUSDT_order-1",
+      externalId: "binance_position_BTCUSDT_open-order-1_close-order-1",
       symbol: "BTCUSDT",
       entryQty: 0.03,
       exitQty: 0.03,
-      realizedPnl: 20,
-      fee: 0.6,
-      makerFee: 0.1,
-      takerFee: 0.5,
+      realizedPnl: 30,
     });
-    expect(trades[0].entryPrice).toBeCloseTo(100666.66666666667);
+    expect(trades[0].fee).toBeCloseTo(1.2);
+    expect(trades[0].makerFee).toBeCloseTo(0.3);
+    expect(trades[0].takerFee).toBeCloseTo(0.9);
+    expect(trades[0].entryPrice).toBeCloseTo(100333.33333333333);
+    expect(trades[0].exitPrice).toBeCloseTo(101333.33333333333);
     expect(trades[0].entryTime.toISOString()).toBe("2026-05-01T00:00:00.000Z");
-    expect(trades[0].exitTime.toISOString()).toBe("2026-05-01T00:00:01.000Z");
+    expect(trades[0].exitTime.toISOString()).toBe("2026-05-01T00:01:01.000Z");
   });
 
   it("aggregates a Binance futures position with partial closes into one closed trade", async () => {
@@ -246,6 +280,86 @@ describe("fetchBinanceTrades", () => {
     expect(trades[0].exitPrice).toBeCloseTo(0.1233333333);
     expect(trades[0].entryTime.toISOString()).toBe("2026-05-01T00:00:00.000Z");
     expect(trades[0].exitTime.toISOString()).toBe("2026-05-01T00:02:00.000Z");
+  });
+
+  it("reconstructs Binance positions opened before the incremental sync window", async () => {
+    const syncSince = new Date("2026-06-04T00:00:00Z");
+    const openTime = new Date("2026-05-31T00:35:26.541Z").getTime();
+    const closeTime = new Date("2026-06-04T10:51:55.653Z").getTime();
+    mockCcxt.exchange.markets_by_id = {
+      HYPEUSDT: {
+        id: "HYPEUSDT",
+        symbol: "HYPE/USDT:USDT",
+        linear: true,
+        swap: true,
+        active: true,
+        quote: "USDT",
+      },
+    };
+    mockCcxt.loadMarkets.mockResolvedValue({
+      "HYPE/USDT:USDT": mockCcxt.exchange.markets_by_id.HYPEUSDT,
+    });
+    mockCcxt.fapiPrivateGetIncome.mockResolvedValue([
+      { symbol: "HYPEUSDT", incomeType: "REALIZED_PNL" },
+      { symbol: "HYPEUSDT", incomeType: "COMMISSION" },
+      { symbol: "HYPEUSDT", incomeType: "FUNDING_FEE" },
+    ]);
+    const fills = [
+      {
+        id: "open-fill",
+        symbol: "HYPE/USDT:USDT",
+        timestamp: openTime,
+        price: 68.72182979822131,
+        amount: 522.85,
+        side: "sell",
+        takerOrMaker: "maker",
+        fee: { cost: 17.96560425 },
+        info: { orderId: "8297037356", realizedPnl: "0", positionSide: "SHORT" },
+      },
+      {
+        id: "close-fill",
+        symbol: "HYPE/USDT:USDT",
+        timestamp: closeTime,
+        price: 64.9,
+        amount: 522.85,
+        side: "buy",
+        takerOrMaker: "maker",
+        fee: { cost: 6.786593 },
+        info: { orderId: "8363136390", realizedPnl: "1998.24370998", positionSide: "SHORT" },
+      },
+    ];
+    mockCcxt.fetchMyTrades.mockImplementation(async (_symbol: string, requestedSince?: number) =>
+      fills.filter((fill) => requestedSince === undefined || fill.timestamp >= requestedSince)
+    );
+
+    const trades = await fetchBinanceTrades(
+      { apiKey: "key", apiSecret: "secret", exchange: "binance" },
+      syncSince
+    );
+
+    expect(mockCcxt.fetchMyTrades).toHaveBeenCalledWith(
+      "HYPE/USDT:USDT",
+      expect.any(Number),
+      undefined,
+      expect.objectContaining({ type: "future" })
+    );
+    expect(Number(mockCcxt.fetchMyTrades.mock.calls[0][1])).toBeLessThanOrEqual(openTime);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]).toMatchObject({
+      externalId: "binance_position_HYPEUSDT_8297037356_8363136390",
+      symbol: "HYPEUSDT",
+      side: "Short",
+      entryQty: 522.85,
+      exitQty: 522.85,
+      realizedPnl: 1998.24370998,
+      fee: 24.75219725,
+      makerFee: 24.75219725,
+      takerFee: 0,
+    });
+    expect(trades[0].entryPrice).toBeCloseTo(68.72182979822131);
+    expect(trades[0].exitPrice).toBeCloseTo(64.9);
+    expect(trades[0].entryTime.toISOString()).toBe("2026-05-31T00:35:26.541Z");
+    expect(trades[0].exitTime.toISOString()).toBe("2026-06-04T10:51:55.653Z");
   });
 });
 

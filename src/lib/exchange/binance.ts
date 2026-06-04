@@ -89,6 +89,8 @@ interface BinancePosition {
 const INCOME_PAGE_LIMIT = 1000;
 const MAX_INCOME_PAGES = 10;
 const MAX_INCOME_WINDOW_MS = 89 * 24 * 60 * 60 * 1000;
+const BINANCE_DEFAULT_TRADE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+const BINANCE_POSITION_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000;
 const POSITION_QTY_EPSILON = 1e-9;
 
 function isUsdtLinearSwapMarket(market: BinanceMarket | undefined): market is UsdtLinearSwapMarket {
@@ -242,33 +244,6 @@ function tradeSideFromOpeningOrder(orderSide: OrderSide): TradeSide {
   return orderSide === "buy" ? "Long" : "Short";
 }
 
-function rawTradeFromOrderGroup(group: BinanceOrderGroup): RawTrade {
-  const price = group.quantity > 0 ? group.value / group.quantity : 0;
-
-  return {
-    externalId: group.externalId,
-    symbol: group.symbol,
-    baseCoin: group.baseCoin,
-    quoteCoin: "USDT",
-    side: tradeSideFromOpeningOrder(group.orderSide),
-    leverage: 1,
-    marginMode: "cross",
-    entryPrice: price,
-    entryQty: group.quantity,
-    entryValue: group.value,
-    entryTime: group.firstTime,
-    exitPrice: price,
-    exitQty: group.quantity,
-    exitValue: group.value,
-    exitTime: group.lastTime,
-    realizedPnl: group.realizedPnl,
-    fee: group.fee,
-    makerFee: group.makerFee,
-    takerFee: group.takerFee,
-    fundingFee: 0,
-  };
-}
-
 function rawTradeFromClosedPosition(position: BinancePosition): RawTrade {
   return {
     externalId: `binance_position_${position.symbol}_${position.firstOrderKey}_${position.lastOrderKey}`,
@@ -412,15 +387,12 @@ function aggregateBinancePositionFills(fills: BinanceFill[]): RawTrade[] {
   const orders = buildBinanceOrderGroups(fills);
   const positions = new Map<string, BinancePosition>();
   const completed: RawTrade[] = [];
-  const orphanClosedOrders: BinanceOrderGroup[] = [];
 
   for (const order of orders) {
     const current = positions.get(order.symbol);
 
     if (!current) {
-      if (order.realizedPnl !== 0) {
-        orphanClosedOrders.push(order);
-      } else {
+      if (order.realizedPnl === 0) {
         positions.set(order.symbol, openPositionFromOrder(order));
       }
       continue;
@@ -443,10 +415,8 @@ function aggregateBinancePositionFills(fills: BinanceFill[]): RawTrade[] {
     }
   }
 
-  return [
-    ...completed,
-    ...orphanClosedOrders.map(rawTradeFromOrderGroup),
-  ].sort((a, b) => a.entryTime.getTime() - b.entryTime.getTime() || a.externalId.localeCompare(b.externalId));
+  return completed
+    .sort((a, b) => a.entryTime.getTime() - b.entryTime.getTime() || a.externalId.localeCompare(b.externalId));
 }
 
 /**
@@ -467,12 +437,13 @@ export async function fetchBinanceTrades(
   }) as unknown as BinanceExchangeClient;
 
   const fills: BinanceFill[] = [];
-  const sinceTs = since ? since.getTime() : Date.now() - 90 * 24 * 60 * 60 * 1000;
+  const sinceTs = since ? since.getTime() : Date.now() - BINANCE_DEFAULT_TRADE_WINDOW_MS;
+  const fillSinceTs = Math.max(0, sinceTs - BINANCE_POSITION_LOOKBACK_MS);
   const markets = await exchange.loadMarkets();
   const symbols = await discoverTradedUsdtFuturesSymbols(exchange, markets, sinceTs);
 
   for (const symbol of symbols) {
-    const symbolFills = await exchange.fetchMyTrades(symbol, sinceTs, undefined, {
+    const symbolFills = await exchange.fetchMyTrades(symbol, fillSinceTs, undefined, {
       type: "future",
       paginate: true,
     });
@@ -480,7 +451,8 @@ export async function fetchBinanceTrades(
     fills.push(...symbolFills);
   }
 
-  return aggregateBinancePositionFills(fills);
+  return aggregateBinancePositionFills(fills)
+    .filter((trade) => trade.exitTime.getTime() >= sinceTs);
 }
 
 export async function fetchBinanceAccountFlows(
