@@ -67,11 +67,11 @@ describe("formatTradePrice", () => {
 });
 
 describe("formatTradeDateTimeParts", () => {
-  it("formats trade date and time consistently", () => {
+  it("formats trade date and time without seconds", () => {
     expect(formatTradeDateTimeParts(new Date(2026, 4, 30, 4, 25, 32))).toEqual({
       date: "30/May/26",
-      time: "04:25:32",
-      full: "30/May/26 - 04:25:32",
+      time: "04:25",
+      full: "30/May/26 - 04:25",
     });
   });
 });

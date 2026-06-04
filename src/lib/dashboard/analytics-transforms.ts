@@ -62,6 +62,16 @@ export interface SymbolReport {
   totalGain: number;
 }
 
+export interface SymbolTop10Report {
+  rank: number;
+  symbol: string;
+  netPnl: number;
+  returnPct: number | null;
+  winRate: number;
+  tradeCount: number;
+  totalEntryValue: number;
+}
+
 export interface FundingReport {
   received: number;
   paid: number;
@@ -253,6 +263,43 @@ export function buildSymbolsReport(trades: Trade[]): SymbolReport[] {
   });
 
   return reports.sort((a, b) => a.symbol.localeCompare(b.symbol));
+}
+
+export function buildSymbolTop10Report(trades: Trade[]): SymbolTop10Report[] {
+  const grouped = new Map<string, Trade[]>();
+  trades.forEach((trade) => {
+    if (!grouped.has(trade.symbol)) grouped.set(trade.symbol, []);
+    grouped.get(trade.symbol)!.push(trade);
+  });
+
+  const reports = Array.from(grouped.entries()).map(([symbol, arr]) => {
+    const wins = arr.filter((trade) => trade.isWin).length;
+    const netPnl = arr.reduce((sum, trade) => sum + trade.realizedPnl, 0);
+    const totalEntryValue = arr.reduce((sum, trade) => sum + Math.abs(trade.entryValue), 0);
+    const returnPct = totalEntryValue > 0 ? (netPnl / totalEntryValue) * 100 : null;
+
+    return {
+      rank: 0,
+      symbol,
+      netPnl,
+      returnPct,
+      winRate: (wins / arr.length) * 100,
+      tradeCount: arr.length,
+      totalEntryValue,
+    };
+  });
+
+  return reports
+    .sort((a, b) => {
+      if (a.returnPct === null && b.returnPct === null) return a.symbol.localeCompare(b.symbol);
+      if (a.returnPct === null) return 1;
+      if (b.returnPct === null) return -1;
+      if (b.returnPct !== a.returnPct) return b.returnPct - a.returnPct;
+      if (b.netPnl !== a.netPnl) return b.netPnl - a.netPnl;
+      return a.symbol.localeCompare(b.symbol);
+    })
+    .slice(0, 10)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
 export function buildFundingReport(trades: Trade[]): FundingReport {

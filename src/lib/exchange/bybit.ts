@@ -25,6 +25,7 @@ interface BybitHistoricalPosition {
 interface BybitExecutionFill {
   symbol?: string;
   timestamp?: number;
+  side?: string;
   amount?: number;
   takerOrMaker?: string;
   fee?: { cost?: number };

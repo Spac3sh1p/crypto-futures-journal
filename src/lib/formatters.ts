@@ -44,7 +44,6 @@ export function formatTradeDateTimeParts(input: string | Date, locale: Locale = 
   const time = d.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
     hour12: false,
   });
   const date = locale === "zh" ? `${year}/${month}/${day}` : `${day}/${mon}/${yr}`;

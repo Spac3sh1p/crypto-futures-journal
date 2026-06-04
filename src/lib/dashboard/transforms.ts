@@ -40,10 +40,12 @@ export interface AccountFlowPnlPoint {
   date: string;
   value: number;
   returnPct: number;
+  dailyReturnPct: number;
   netDeposits: number;
 }
 
 const TRADING_FLOW_TYPES = new Set(["REALIZED_PNL", "COMMISSION", "FUNDING_FEE"]);
+const CRYPTO_TRADING_DAYS_PER_YEAR = 365;
 
 export function buildAccountFlowPnlSeries(
   flows: AccountFlowLike[],
@@ -84,11 +86,43 @@ export function buildAccountFlowPnlSeries(
       date,
       value: cumulativeTradingPnl,
       returnPct: netDeposits > 0 ? (cumulativeTradingPnl / netDeposits) * 100 : 0,
+      dailyReturnPct: netDeposits > 0 ? (bucket.tradingPnl / netDeposits) * 100 : 0,
       netDeposits,
     });
   }
 
   return points;
+}
+
+export function calculateAnnualizedSharpeRatio(
+  points: { value: number; netDeposits?: number; dailyReturnPct?: number }[]
+): number | null {
+  let previousValue = 0;
+  const dailyReturns: number[] = [];
+
+  for (const point of points) {
+    const dailyReturn = typeof point.dailyReturnPct === "number"
+      ? point.dailyReturnPct / 100
+      : typeof point.netDeposits === "number" && point.netDeposits > 0
+        ? (point.value - previousValue) / point.netDeposits
+        : null;
+
+    if (dailyReturn !== null && Number.isFinite(dailyReturn)) {
+      dailyReturns.push(dailyReturn);
+    }
+
+    previousValue = point.value;
+  }
+
+  if (dailyReturns.length < 2) return null;
+
+  const meanReturn = dailyReturns.reduce((sum, value) => sum + value, 0) / dailyReturns.length;
+  const variance = dailyReturns.reduce((sum, value) => sum + (value - meanReturn) ** 2, 0) / (dailyReturns.length - 1);
+  const standardDeviation = Math.sqrt(variance);
+
+  if (standardDeviation === 0 || !Number.isFinite(standardDeviation)) return null;
+
+  return (meanReturn / standardDeviation) * Math.sqrt(CRYPTO_TRADING_DAYS_PER_YEAR);
 }
 
 export function buildDailyPnlSeries(

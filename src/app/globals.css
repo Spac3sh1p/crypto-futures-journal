@@ -50,30 +50,30 @@
 
 :root {
   /* V4 professional trading terminal theme */
-  --bg-primary: #07101B;
-  --bg-secondary: #111B29;
-  --bg-tertiary: #0C1522;
-  --bg-hover: #18263A;
-  --border: #26364B;
-  --border-light: #1A283A;
-  --panel: #111B29;
-  --panel-elevated: #142033;
-  --chart-bg: #08111D;
+  --bg-primary: #070A0F;
+  --bg-secondary: #111721;
+  --bg-tertiary: #0C1118;
+  --bg-hover: #1B2532;
+  --border: #2A3442;
+  --border-light: #1B2531;
+  --panel: #111721;
+  --panel-elevated: #171F2B;
+  --chart-bg: #080B10;
 
-  --text-primary: #F3F7FC;
-  --text-secondary: #BBC7D6;
-  --text-muted: #8190A6;
+  --text-primary: #F4F7FA;
+  --text-secondary: #C1CAD6;
+  --text-muted: #7E8A9B;
 
-  --green: #22C38E;
-  --green-dim: rgba(34, 195, 142, 0.13);
+  --green: #41D1A0;
+  --green-dim: rgba(65, 209, 160, 0.13);
   --red: #FF5A5F;
   --red-dim: rgba(255, 90, 95, 0.13);
-  --yellow: #F5B31A;
-  --yellow-dim: rgba(245, 179, 26, 0.14);
-  --blue: #7DB4FF;
-  --blue-dim: rgba(125, 180, 255, 0.13);
-  --purple: #8B7CFF;
-  --purple-dim: rgba(139, 124, 255, 0.13);
+  --yellow: #D8A443;
+  --yellow-dim: rgba(216, 164, 67, 0.14);
+  --blue: #8EA7C8;
+  --blue-dim: rgba(142, 167, 200, 0.13);
+  --purple: #9A8FE3;
+  --purple-dim: rgba(154, 143, 227, 0.13);
 
   --background: var(--bg-primary);
   --foreground: var(--text-primary);
@@ -107,10 +107,7 @@
 }
 
 body {
-  background:
-    radial-gradient(circle at 14% 0%, rgba(80, 142, 210, 0.12), transparent 28rem),
-    radial-gradient(circle at 84% 8%, rgba(245, 179, 26, 0.06), transparent 22rem),
-    linear-gradient(180deg, #07101B 0%, #08111D 48%, #050B13 100%);
+  background: linear-gradient(180deg, #080B10 0%, #0A0F16 48%, #05070B 100%);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -133,37 +130,48 @@ body {
 
 .trading-panel {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(20, 32, 51, 0.96), rgba(12, 21, 34, 0.98)),
+    linear-gradient(180deg, rgba(24, 32, 44, 0.98), rgba(11, 16, 23, 0.99)),
     var(--panel);
   box-shadow:
-    0 18px 48px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    0 18px 42px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
 }
 
 .trading-card {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background:
-    radial-gradient(circle at 88% 0%, rgba(125, 180, 255, 0.075), transparent 9rem),
-    linear-gradient(180deg, rgba(21, 33, 52, 0.98), rgba(13, 23, 37, 0.98));
+    linear-gradient(180deg, rgba(24, 33, 45, 0.98), rgba(12, 17, 24, 0.98));
   box-shadow:
-    0 14px 34px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    0 14px 30px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.trading-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(65, 209, 160, 0.52), rgba(216, 164, 67, 0.16), transparent);
+  pointer-events: none;
 }
 
 .terminal-label {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   color: var(--text-muted);
 }
 
 .terminal-section-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0;
+  line-height: 1.2;
   color: var(--text-primary);
 }
 

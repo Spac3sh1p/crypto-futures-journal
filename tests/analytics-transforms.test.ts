@@ -5,6 +5,7 @@ import {
   buildDurationReport,
   buildFeesReport,
   buildSizeReport,
+  buildSymbolTop10Report,
   buildSymbolsReport,
 } from "@/lib/dashboard/analytics-transforms";
 import { makeTrade } from "./helpers";
@@ -212,6 +213,59 @@ describe("buildSymbolsReport", () => {
     expect(sol.avgDuration).toBe(900);
     expect(sol.totalGain).toBe(20);
     expect(sol.avgGain).toBe(10);
+  });
+});
+
+describe("buildSymbolTop10Report", () => {
+  it("returns empty array for no trades", () => {
+    expect(buildSymbolTop10Report([])).toEqual([]);
+  });
+
+  it("calculates symbol return from total pnl divided by total entry value", () => {
+    const result = buildSymbolTop10Report([
+      makeTrade({ symbol: "BTCUSDT", realizedPnl: 100, isWin: true, entryValue: 1000 }),
+      makeTrade({ symbol: "BTCUSDT", realizedPnl: -25, isWin: false, entryValue: 500 }),
+      makeTrade({ symbol: "ETHUSDT", realizedPnl: 50, isWin: true, entryValue: 2000 }),
+    ]);
+
+    const btc = result.find((row) => row.symbol === "BTCUSDT");
+    expect(btc).toEqual({
+      rank: 1,
+      symbol: "BTCUSDT",
+      netPnl: 75,
+      returnPct: 5,
+      winRate: 50,
+      tradeCount: 2,
+      totalEntryValue: 1500,
+    });
+  });
+
+  it("sorts by return percent descending and limits to 10 symbols", () => {
+    const trades = Array.from({ length: 12 }, (_, index) => {
+      const score = index + 1;
+      return makeTrade({
+        symbol: `SYM${String(score).padStart(2, "0")}USDT`,
+        realizedPnl: score,
+        entryValue: 100,
+        isWin: true,
+      });
+    });
+
+    const result = buildSymbolTop10Report(trades);
+
+    expect(result).toHaveLength(10);
+    expect(result[0]).toMatchObject({ rank: 1, symbol: "SYM12USDT", returnPct: 12 });
+    expect(result[9]).toMatchObject({ rank: 10, symbol: "SYM03USDT", returnPct: 3 });
+  });
+
+  it("keeps zero-entry symbols ranked after finite returns", () => {
+    const result = buildSymbolTop10Report([
+      makeTrade({ symbol: "ZEROCUSDT", realizedPnl: 30, entryValue: 0, isWin: true }),
+      makeTrade({ symbol: "SOLUSDT", realizedPnl: -10, entryValue: 100, isWin: false }),
+    ]);
+
+    expect(result[0]).toMatchObject({ symbol: "SOLUSDT", returnPct: -10 });
+    expect(result[1]).toMatchObject({ symbol: "ZEROCUSDT", returnPct: null });
   });
 });
 

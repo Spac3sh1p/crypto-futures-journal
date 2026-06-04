@@ -144,7 +144,7 @@ function DayCell({ day, text }: { day: MonthlyCalendarDay; text: ReturnType<type
         {visibleTrades.length > 0 ? (
           visibleTrades.map((trade) => <TradePill key={trade.id} trade={trade} />)
         ) : (
-          <div className="grid flex-1 place-items-center font-mono text-xs text-text-muted">-</div>
+          <div className="flex-1" aria-hidden="true" />
         )}
         {hiddenTradeCount > 0 && (
           <div className="font-mono text-[11px] font-semibold text-text-muted">
@@ -153,9 +153,11 @@ function DayCell({ day, text }: { day: MonthlyCalendarDay; text: ReturnType<type
         )}
       </div>
 
-      <div className={`mt-2 border-t border-border-light pt-2 font-mono text-sm font-bold tabular-nums ${pnlToneClass(day.pnl)}`}>
-        {day.tradeCount > 0 ? formatPnl(day.pnl) : text.noTrades}
-      </div>
+      {day.tradeCount > 0 && (
+        <div className={`mt-2 border-t border-border-light pt-2 font-mono text-sm font-bold tabular-nums ${pnlToneClass(day.pnl)}`}>
+          {formatPnl(day.pnl)}
+        </div>
+      )}
     </div>
   );
 }

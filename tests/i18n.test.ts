@@ -21,6 +21,8 @@ describe("i18n", () => {
     expect(en.topBar.refresh).toBe("Refresh");
     expect(Object.keys(zh)).toEqual(Object.keys(en));
     expect(Object.keys(zh.performance.metrics)).toEqual(Object.keys(en.performance.metrics));
+    expect(Object.keys(zh.overview.periodReview)).toEqual(Object.keys(en.overview.periodReview));
+    expect(Object.keys(zh.overview.symbolTop10)).toEqual(Object.keys(en.overview.symbolTop10));
     expect(Object.keys(zh.tradeHistory.columns)).toEqual(Object.keys(en.tradeHistory.columns));
   });
 
