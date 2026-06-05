@@ -23,6 +23,7 @@ describe("i18n", () => {
     expect(Object.keys(zh.performance.metrics)).toEqual(Object.keys(en.performance.metrics));
     expect(Object.keys(zh.overview.periodReview)).toEqual(Object.keys(en.overview.periodReview));
     expect(Object.keys(zh.overview.symbolTop10)).toEqual(Object.keys(en.overview.symbolTop10));
+    expect(Object.keys(zh.analytics.symbols)).toEqual(Object.keys(en.analytics.symbols));
     expect(Object.keys(zh.tradeHistory.columns)).toEqual(Object.keys(en.tradeHistory.columns));
   });
 

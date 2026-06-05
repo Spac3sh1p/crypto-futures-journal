@@ -183,17 +183,16 @@ describe("buildSymbolsReport", () => {
     expect(buildSymbolsReport([])).toEqual([]);
   });
 
-  it("groups by symbol and sorts alphabetically", () => {
+  it("groups by symbol and sorts by total gain descending", () => {
     const trades = [
       makeTrade({ symbol: "ETHUSDT", realizedPnl: 50, isWin: true, side: "Long", holdDuration: 3600, entryValue: 2000 }),
       makeTrade({ symbol: "BTCUSDT", realizedPnl: -20, isWin: false, side: "Short", holdDuration: 7200, entryValue: 5000 }),
       makeTrade({ symbol: "BTCUSDT", realizedPnl: 100, isWin: true, side: "Long", holdDuration: 1800, entryValue: 6000 }),
+      makeTrade({ symbol: "SOLUSDT", realizedPnl: 120, isWin: true, side: "Long", holdDuration: 1200, entryValue: 3000 }),
     ];
     const result = buildSymbolsReport(trades);
 
-    expect(result).toHaveLength(2);
-    expect(result[0].symbol).toBe("BTCUSDT");
-    expect(result[1].symbol).toBe("ETHUSDT");
+    expect(result.map((row) => row.symbol)).toEqual(["SOLUSDT", "BTCUSDT", "ETHUSDT"]);
   });
 
   it("calculates per-symbol stats correctly", () => {

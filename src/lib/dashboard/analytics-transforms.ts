@@ -262,7 +262,10 @@ export function buildSymbolsReport(trades: Trade[]): SymbolReport[] {
     });
   });
 
-  return reports.sort((a, b) => a.symbol.localeCompare(b.symbol));
+  return reports.sort((a, b) => {
+    if (b.totalGain !== a.totalGain) return b.totalGain - a.totalGain;
+    return a.symbol.localeCompare(b.symbol);
+  });
 }
 
 export function buildSymbolTop10Report(trades: Trade[]): SymbolTop10Report[] {

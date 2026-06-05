@@ -348,6 +348,11 @@ export const dictionaries = {
         avgDuration: "平均持仓",
         avgGain: "平均盈亏",
         totalGain: "总盈亏",
+        previous: "上一页",
+        next: "下一页",
+        previousAria: "上一页交易对表现",
+        nextAria: "下一页交易对表现",
+        pageAria: "跳转到交易对表现第",
       },
       funding: {
         received: "收到资金费",
@@ -737,6 +742,11 @@ export const dictionaries = {
         avgDuration: "Avg Trade Duration",
         avgGain: "Avg Gain",
         totalGain: "Total Gain",
+        previous: "Previous",
+        next: "Next",
+        previousAria: "Previous traded symbols page",
+        nextAria: "Next traded symbols page",
+        pageAria: "Go to traded symbols page",
       },
       funding: {
         received: "Funding Received",
