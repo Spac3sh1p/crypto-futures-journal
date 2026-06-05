@@ -28,6 +28,49 @@ vi.mock("ccxt", () => ({
 
 import { fetchBybitTrades } from "@/lib/exchange/bybit";
 
+const BYBIT_MAX_HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+type MockExecutionFill = {
+  id?: string;
+  symbol?: string;
+  timestamp?: number;
+  side?: string;
+  price?: number;
+  amount?: number;
+  takerOrMaker?: string;
+  fee?: { cost?: number };
+  info?: Record<string, unknown>;
+};
+
+function mockExecutionFillsByRequestWindow(fills: MockExecutionFill[]) {
+  mockCcxt.fetchMyTrades.mockImplementation(
+    async (_symbol: string, since?: number, _limit?: number, params?: Record<string, unknown>) => {
+      const until = Number(params?.until);
+      return fills.filter((fill) => {
+        if (!fill.timestamp || !since || !Number.isFinite(until)) return false;
+        return fill.timestamp >= since && fill.timestamp <= until;
+      });
+    }
+  );
+}
+
+function expectBybitExecutionCallsWithinSevenDays() {
+  expect(mockCcxt.fetchMyTrades).toHaveBeenCalled();
+
+  for (const [symbol, since, limit, params] of mockCcxt.fetchMyTrades.mock.calls) {
+    const until = Number((params as Record<string, unknown>)?.until);
+    expect(symbol).toMatch(/\/USDT:USDT$/);
+    expect(limit).toBe(100);
+    expect(params).toEqual(
+      expect.objectContaining({
+        category: "linear",
+        type: "swap",
+      })
+    );
+    expect(until - Number(since)).toBeLessThanOrEqual(BYBIT_MAX_HISTORY_WINDOW_MS);
+  }
+}
+
 describe("fetchBybitTrades", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -65,7 +108,7 @@ describe("fetchBybitTrades", () => {
         },
       },
     ]);
-    mockCcxt.fetchMyTrades.mockResolvedValue([
+    mockExecutionFillsByRequestWindow([
       {
         id: "entry-fill",
         symbol: "ZEC/USDT:USDT",
@@ -113,15 +156,12 @@ describe("fetchBybitTrades", () => {
       })
     );
     expect(mockCcxt.fetchMyTrades).toHaveBeenCalledWith(
-      "ZEC/USDT:USDT",
-      new Date("2026-06-03T11:40:18.560Z").getTime() - 90 * 24 * 60 * 60 * 1000,
+      expect.any(String),
+      expect.any(Number),
       100,
-      expect.objectContaining({
-        category: "linear",
-        type: "swap",
-        until: new Date("2026-06-03T11:45:18.560Z").getTime(),
-      })
+      expect.any(Object)
     );
+    expectBybitExecutionCallsWithinSevenDays();
     expect(trades).toHaveLength(1);
     expect(trades[0]).toMatchObject({
       externalId: "bybit_closed_pnl_ZECUSDT_close-order-1_1780010000000",
@@ -173,7 +213,7 @@ describe("fetchBybitTrades", () => {
         },
       },
     ]);
-    mockCcxt.fetchMyTrades.mockResolvedValue([
+    mockExecutionFillsByRequestWindow([
       {
         id: "exit-fill",
         symbol: "HYPE/USDT:USDT",
@@ -204,6 +244,7 @@ describe("fetchBybitTrades", () => {
       })
     );
     expect(trades).toHaveLength(1);
+    expectBybitExecutionCallsWithinSevenDays();
     expect(trades[0]).toMatchObject({
       externalId: "bybit_closed_pnl_HYPEUSDT_close-order-1_1780531915653",
       symbol: "HYPEUSDT",
@@ -248,7 +289,7 @@ describe("fetchBybitTrades", () => {
         },
       },
     ]);
-    mockCcxt.fetchMyTrades.mockResolvedValue([
+    mockExecutionFillsByRequestWindow([
       {
         id: "open-fill",
         symbol: "OPN/USDT:USDT",
@@ -287,6 +328,7 @@ describe("fetchBybitTrades", () => {
     );
 
     expect(trades).toHaveLength(1);
+    expectBybitExecutionCallsWithinSevenDays();
     expect(trades[0]).toMatchObject({
       externalId: "bybit_closed_pnl_OPNUSDT_close-order-1_1780550659513",
       symbol: "OPNUSDT",
@@ -297,5 +339,84 @@ describe("fetchBybitTrades", () => {
     });
     expect(trades[0].entryTime.toISOString()).toBe("2026-06-04T05:10:24.656Z");
     expect(trades[0].exitTime.toISOString()).toBe("2026-06-04T05:24:19.513Z");
+  });
+
+  it("splits long Bybit execution lookbacks into seven-day API windows", async () => {
+    const since = new Date("2026-06-04T00:00:00Z");
+    const openTime = new Date("2026-05-15T03:00:00.000Z").getTime();
+    const closeTime = new Date("2026-06-04T09:30:00.000Z").getTime();
+    mockCcxt.fetchPositionsHistory.mockResolvedValue([
+      {
+        symbol: "BTC/USDT:USDT",
+        timestamp: closeTime,
+        lastUpdateTimestamp: closeTime,
+        side: "long",
+        leverage: 10,
+        entryPrice: 100000,
+        lastPrice: 101000,
+        contracts: 0.1,
+        notional: 10100,
+        realizedPnl: 100,
+        info: {
+          orderId: "close-order-long-hold",
+          symbol: "BTCUSDT",
+          side: "Sell",
+          closedSize: "0.1",
+          cumEntryValue: "10000",
+          cumExitValue: "10100",
+          createdTime: String(closeTime),
+          updatedTime: String(closeTime),
+          closedPnl: "100",
+        },
+      },
+    ]);
+    mockExecutionFillsByRequestWindow([
+      {
+        id: "open-fill",
+        symbol: "BTC/USDT:USDT",
+        timestamp: openTime,
+        side: "buy",
+        amount: 0.1,
+        takerOrMaker: "taker",
+        fee: { cost: 5 },
+        info: {
+          execType: "Trade",
+          orderId: "open-order-long-hold",
+          closedSize: "0",
+          side: "Buy",
+        },
+      },
+      {
+        id: "close-fill",
+        symbol: "BTC/USDT:USDT",
+        timestamp: closeTime,
+        side: "sell",
+        amount: 0.1,
+        takerOrMaker: "taker",
+        fee: { cost: 5.05 },
+        info: {
+          execType: "Trade",
+          orderId: "close-order-long-hold",
+          closedSize: "0.1",
+          side: "Sell",
+        },
+      },
+    ]);
+
+    const trades = await fetchBybitTrades(
+      { apiKey: "key", apiSecret: "secret", exchange: "bybit" },
+      since
+    );
+
+    expectBybitExecutionCallsWithinSevenDays();
+    expect(mockCcxt.fetchMyTrades.mock.calls.length).toBeGreaterThan(1);
+    expect(trades).toHaveLength(1);
+    expect(trades[0]).toMatchObject({
+      symbol: "BTCUSDT",
+      fee: 10.05,
+      takerFee: 10.05,
+    });
+    expect(trades[0].entryTime.toISOString()).toBe("2026-05-15T03:00:00.000Z");
+    expect(trades[0].exitTime.toISOString()).toBe("2026-06-04T09:30:00.000Z");
   });
 });

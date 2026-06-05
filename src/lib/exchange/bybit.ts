@@ -5,6 +5,7 @@ const BYBIT_CLOSE_PNL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const BYBIT_CLOSE_PNL_LIMIT = 100;
 const BYBIT_EXECUTION_FEE_PADDING_MS = 5 * 60 * 1000;
 const BYBIT_EXECUTION_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000;
+const BYBIT_EXECUTION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const BYBIT_EXECUTION_LIMIT = 100;
 const BYBIT_QTY_EPSILON = 1e-9;
 
@@ -23,6 +24,7 @@ interface BybitHistoricalPosition {
 }
 
 interface BybitExecutionFill {
+  id?: string;
   symbol?: string;
   timestamp?: number;
   side?: string;
@@ -30,6 +32,58 @@ interface BybitExecutionFill {
   takerOrMaker?: string;
   fee?: { cost?: number };
   info?: Record<string, unknown>;
+}
+
+function bybitExecutionFillKey(fill: BybitExecutionFill): string {
+  const info = fill.info || {};
+  const id = fill.id || info.execId || info.execIdStr;
+  if (id) return String(id);
+
+  return [
+    fill.symbol || "",
+    fill.timestamp || "",
+    fill.side || info.side || "",
+    fill.amount ?? info.execQty ?? info.qty ?? "",
+    fill.fee?.cost ?? info.execFee ?? "",
+  ].join("|");
+}
+
+async function fetchBybitExecutionFills(
+  exchange: BybitHistoryExchange,
+  symbol: string,
+  quoteCoin: string,
+  windowStart: number,
+  windowEnd: number
+): Promise<BybitExecutionFill[]> {
+  const fills: BybitExecutionFill[] = [];
+  const seen = new Set<string>();
+  let requestStart = windowStart;
+
+  while (requestStart <= windowEnd) {
+    const requestEnd = Math.min(requestStart + BYBIT_EXECUTION_WINDOW_MS, windowEnd);
+    const page = await exchange.fetchMyTrades(
+      bybitUnifiedSymbol(symbol, quoteCoin),
+      requestStart,
+      BYBIT_EXECUTION_LIMIT,
+      {
+        type: "swap",
+        category: "linear",
+        until: requestEnd,
+        paginate: true,
+      }
+    );
+
+    for (const fill of page) {
+      const key = bybitExecutionFillKey(fill);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      fills.push(fill);
+    }
+
+    requestStart = requestEnd + 1;
+  }
+
+  return fills;
 }
 
 interface BybitHistoryExchange {
@@ -205,16 +259,12 @@ async function fetchBybitExecutionSummary(
 ) {
   const windowStart = Math.max(0, exitTime.getTime() - BYBIT_EXECUTION_LOOKBACK_MS);
   const windowEnd = exitTime.getTime() + BYBIT_EXECUTION_FEE_PADDING_MS;
-  const fills = await exchange.fetchMyTrades(
-    bybitUnifiedSymbol(symbol, quoteCoin),
+  const fills = await fetchBybitExecutionFills(
+    exchange,
+    symbol,
+    quoteCoin,
     windowStart,
-    BYBIT_EXECUTION_LIMIT,
-    {
-      type: "swap",
-      category: "linear",
-      until: windowEnd,
-      paginate: true,
-    }
+    windowEnd
   );
 
   const entryTime = deriveBybitEntryTimeFromExecutions(
