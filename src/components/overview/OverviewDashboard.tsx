@@ -30,8 +30,6 @@ interface OverviewDashboardParams {
 
 interface OverviewDashboardProps {
   params: OverviewDashboardParams;
-  basePath?: string;
-  showPreviewBadge?: boolean;
 }
 
 function serializeTrade(trade: Awaited<ReturnType<typeof getTradesInRange>>[number]): SerializedTrade {
@@ -88,7 +86,6 @@ function KpiTile({
 
 export async function OverviewDashboard({
   params,
-  showPreviewBadge = false,
 }: OverviewDashboardProps) {
   const range = parseRange(params.range);
   const exchangeId = params.exchangeId;
@@ -120,12 +117,6 @@ export async function OverviewDashboard({
 
   return (
     <div className="space-y-4">
-      {showPreviewBadge && (
-        <div className="inline-flex rounded-full border border-yellow/25 bg-yellow-dim px-3 py-1 text-[11px] font-semibold text-yellow">
-          {text.previewBadge}
-        </div>
-      )}
-
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
         <KpiTile
           label={dictionary.performance.metrics.totalPnl}

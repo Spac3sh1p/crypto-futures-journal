@@ -62,10 +62,6 @@ export const dictionaries = {
           title: "交易明细",
           subtitle: "完整交易记录、展开复盘和导出",
         },
-        overview: {
-          title: "总览预览",
-          subtitle: "先看关键表现，细节按需展开",
-        },
         analytics: {
           title: "交易分析",
           subtitle: "交易行为、入场时段、仓位大小、费用",
@@ -131,7 +127,6 @@ export const dictionaries = {
       },
     },
     overview: {
-      previewBadge: "新版预览",
       heroTitle: "账户表现总览",
       heroSubtitle: "先判断周期表现，再进入交易明细或 K线复盘。",
       cyclePnl: "周期盈亏",
@@ -456,10 +451,6 @@ export const dictionaries = {
           title: "Trade History",
           subtitle: "Full trade records, expandable review, export",
         },
-        overview: {
-          title: "Overview Preview",
-          subtitle: "Key performance first, details on demand",
-        },
         analytics: {
           title: "Analytics",
           subtitle: "Trade behavior, timing, sizing, fees",
@@ -525,7 +516,6 @@ export const dictionaries = {
       },
     },
     overview: {
-      previewBadge: "New preview",
       heroTitle: "Account Overview",
       heroSubtitle: "Understand period performance first, then drill into trades or candlestick review.",
       cyclePnl: "Period PnL",

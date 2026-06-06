@@ -44,6 +44,14 @@ export interface AccountFlowPnlPoint {
   netDeposits: number;
 }
 
+interface DailyReturnPoint {
+  date?: string;
+  value: number;
+  returnPct?: number;
+  dailyReturnPct?: number;
+  netDeposits?: number;
+}
+
 const TRADING_FLOW_TYPES = new Set(["REALIZED_PNL", "COMMISSION", "FUNDING_FEE"]);
 const CRYPTO_TRADING_DAYS_PER_YEAR = 365;
 
@@ -95,7 +103,7 @@ export function buildAccountFlowPnlSeries(
 }
 
 export function calculateAnnualizedSharpeRatio(
-  points: { value: number; netDeposits?: number; dailyReturnPct?: number }[]
+  points: DailyReturnPoint[]
 ): number | null {
   let previousValue = 0;
   const dailyReturns: number[] = [];

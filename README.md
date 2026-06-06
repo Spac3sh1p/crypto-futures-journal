@@ -1,71 +1,63 @@
 # Crypto Futures Journal
 
-Local-first crypto futures trading journal and analytics platform. Inspired by [CoinMarketMan](https://app.coinmarketman.com).
+Local-first crypto futures trading journal and analytics platform.
 
 ## Features
 
-- **Auto-import** trades from Bybit & Binance via read-only API keys
-- **Multi-dimensional analysis**: PnL, win rate, profit factor, by coin/timeframe/direction/leverage/hold duration
-- **Dashboard** with portfolio overview, daily stats, performance charts
-- **Trade log** with filtering, sorting, tagging, and notes
-- **100% local** — your data stays on your machine
+- Auto-import closed futures trades from Bybit and Binance with read-only API keys
+- Track PnL, win rate, profit factor, drawdown, funding, fees, symbols, duration, and sizing
+- Review recent trades with real market candles where supported
+- Filter analytics by exchange and time range
+- Keep data local in SQLite
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15 (App Router) + TypeScript + Tailwind CSS
-- **Database**: SQLite via Prisma ORM
-- **Exchange API**: ccxt (unified interface for Bybit/Binance)
-- **Charts**: Recharts
+- Frontend: Next.js 16.2.6 App Router, React 19, TypeScript, Tailwind CSS
+- Database: SQLite via Prisma ORM
+- Exchange API: ccxt plus exchange-specific adapters
+- Charts: Recharts
+- Tests: Vitest
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Set up your API keys
 cp .env.local.example .env.local
-# Edit .env.local with your read-only API keys
-
-# Initialize database
 npx prisma migrate dev
-
-# Start dev server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open http://localhost:3000.
 
 ## Project Structure
 
-```
+```text
 src/
-├── app/                    # Next.js App Router pages
-│   ├── api/               # API routes
-│   │   ├── trades/        # Trade CRUD & queries
-│   │   ├── exchanges/     # Exchange credential management
-│   │   ├── sync/          # Trade import triggers
-│   │   └── stats/         # Analytics endpoints
-│   ├── page.tsx           # Dashboard
-│   └── globals.css        # Theme (Pro Trading dark)
-├── components/
-│   ├── dashboard/         # Dashboard widgets
-│   ├── trades/            # Trade list & detail
-│   ├── charts/            # Analysis charts
-│   └── ui/                # Shared UI primitives
-├── lib/
-│   ├── exchange/          # Bybit & Binance API adapters
-│   ├── analysis/          # Metrics calculation engine
-│   └── prisma.ts          # DB client singleton
-└── generated/prisma/      # Generated Prisma client
+  app/
+    api/                  Server routes for auth, exchanges, sync, trades, and market data
+    dashboard/            Maintained dashboard pages
+    globals.css           Trading terminal theme
+  components/
+    analytics/            Analytics panels and reports
+    calendar/             Monthly review UI
+    dashboard/            Shared dashboard shell and trade detail components
+    i18n/                 Locale provider and toggle
+    overview/             Main performance overview
+    settings/             Exchange connection UI
+  lib/
+    analysis/             Metrics engine
+    dashboard/            Dashboard queries and transforms
+    exchange/             Exchange adapters
+    market/               Market candle helpers
+prisma/
+  schema.prisma           SQLite schema
+  migrations/             Database migrations
+tests/                    Unit and route behavior tests
+scripts/                  Local development and visual check helpers
 ```
 
 ## Security
 
-- Only **read-only** API keys are used — no withdrawal or trading permissions
-- Keys are stored in `.env.local` (gitignored) and only accessed server-side
-- Bind your API keys to `127.0.0.1` in exchange settings for extra safety
-
-## License
-
-MIT
+- Use read-only API keys only.
+- Store local secrets in `.env.local`; it is ignored by Git.
+- Do not commit local databases, backups, logs, reports, or generated Prisma output.

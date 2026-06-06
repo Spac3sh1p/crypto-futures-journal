@@ -124,8 +124,8 @@ export function Sidebar({ exchanges = [] }: { exchanges?: SidebarExchange[] }) {
   const currentView = searchParams.get("view");
   const selectedExchangeId = searchParams.get("exchangeId");
   const sourceText = locale === "zh"
-    ? { version: "专业版 v4.0", source: "数据源", all: "全部交易所", allScope: "汇总交易记录", futures: "U 本位合约", sync: "本地只读同步", empty: "暂无交易所连接", trades: "笔交易" }
-    : { version: "Pro v4.0", source: "Data Source", all: "All exchanges", allScope: "Combined trade records", futures: "USDT Futures", sync: "Local read-only sync", empty: "No exchange connected", trades: "trades" };
+    ? { source: "数据源", all: "全部交易所", allScope: "汇总交易记录", futures: "U 本位合约", sync: "本地只读同步", empty: "暂无交易所连接", trades: "笔交易" }
+    : { source: "Data Source", all: "All exchanges", allScope: "Combined trade records", futures: "USDT Futures", sync: "Local read-only sync", empty: "No exchange connected", trades: "trades" };
 
   const activeExchanges = exchanges.filter((exchange) => exchange.isActive);
   const selectedExchange = activeExchanges.find((exchange) => exchange.id === selectedExchangeId);
@@ -151,7 +151,6 @@ export function Sidebar({ exchanges = [] }: { exchanges?: SidebarExchange[] }) {
         <h1 className="text-center text-xs font-bold uppercase tracking-[0.12em] text-yellow sm:hidden">
           {dictionary.common.appShortName}
         </h1>
-        <p className="mt-2 hidden text-xs font-medium text-text-muted sm:block">{sourceText.version}</p>
       </div>
 
       <nav className="flex-1 space-y-1 p-3 sm:p-4" aria-label={dictionary.common.dashboard}>

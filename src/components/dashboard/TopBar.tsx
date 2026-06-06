@@ -53,8 +53,6 @@ export function TopBar() {
         title: locale === "zh" ? "月度复盘" : "Monthly Review",
         subtitle: locale === "zh" ? "按月份查看每日交易结果" : "Daily trade results by month",
       }
-    : pathname.includes("/overview-preview")
-    ? dictionary.topBar.pages.overview
     : pathname.includes("/analytics")
     ? dictionary.topBar.pages.analytics
     : pathname.includes("/settings")
