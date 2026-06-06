@@ -5,7 +5,7 @@ import type { RawAccountFlow, RawTrade } from "@/lib/exchange";
 import { requireAuth } from "@/lib/auth";
 import { decryptSecret } from "@/lib/crypto";
 
-// POST /api/exchanges/[id]/sync — trigger trade import
+// POST /api/exchanges/[id]/sync - trigger trade import
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -240,7 +240,7 @@ export async function POST(
       ? ` Updated ${tradesUpdated} existing trade${tradesUpdated === 1 ? "" : "s"} fees.`
       : "";
     const message = totalInsertErrors > 0
-      ? `Imported ${tradesAdded} trades, ${insertErrors} failed. Fetched ${rawTrades.length} total. lastSync NOT advanced — retry will re-fetch failed trades.`
+      ? `Imported ${tradesAdded} trades, ${insertErrors} failed. Fetched ${rawTrades.length} total. lastSync NOT advanced - retry will re-fetch failed trades.`
       : `Imported ${tradesAdded} new trades from ${rawTrades.length} fetched.${updateMessage}${flowMessage}`;
     const detailedMessage = totalInsertErrors > 0
       ? `Imported ${tradesAdded} trades and ${accountFlowsAdded} account flows; updated ${tradesUpdated} existing trades; ${totalInsertErrors} inserts failed. Fetched ${rawTrades.length} trades and ${rawAccountFlows.length} flows. lastSync NOT advanced - retry will re-fetch failed records.`
@@ -264,9 +264,12 @@ export async function POST(
       },
     });
 
+    const isFullSuccess = finalStatus === "success";
     return NextResponse.json({
-      success: true,
+      success: isFullSuccess,
+      message: detailedMessage,
       data: {
+        status: finalStatus,
         tradesAdded,
         tradesUpdated,
         totalFetched: rawTrades.length,

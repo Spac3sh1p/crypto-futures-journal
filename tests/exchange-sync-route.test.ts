@@ -147,4 +147,35 @@ describe("POST /api/exchanges/[id]/sync", () => {
       })
     );
   });
+
+  it("reports a failed import batch as an unsuccessful sync response", async () => {
+    mocks.prisma.trade.findMany.mockResolvedValue([]);
+    mocks.fetchBybitTrades.mockResolvedValue([makeRawTrade()]);
+    mocks.prisma.$transaction.mockRejectedValueOnce(new Error("database unavailable"));
+
+    const response = await POST(new Request("http://localhost/api/exchanges/exchange-1/sync"), {
+      params: Promise.resolve({ id: "exchange-1" }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(false);
+    expect(body.message).toContain("lastSync NOT advanced");
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        status: "error",
+        tradesAdded: 0,
+        errors: 1,
+      })
+    );
+    expect(mocks.prisma.exchange.update).not.toHaveBeenCalled();
+    expect(mocks.prisma.syncLog.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "error",
+          message: expect.stringContaining("lastSync NOT advanced"),
+        }),
+      })
+    );
+  });
 });

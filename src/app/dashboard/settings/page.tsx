@@ -105,7 +105,11 @@ export default function SettingsPage() {
         });
         await fetchExchanges();
       } else {
-        setMessage({ type: "error", text: text.syncFailed });
+        const failureMessage = json.data?.message ?? json.message ?? text.syncFailed;
+        setMessage({ type: "error", text: failureMessage });
+        if (json.data?.status === "partial") {
+          await fetchExchanges();
+        }
       }
     } catch {
       setMessage({ type: "error", text: text.syncNetworkError });
