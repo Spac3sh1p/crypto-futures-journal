@@ -13,7 +13,11 @@ interface AccountedTrade {
   fundingFee: number;
   pnlPercent: number;
   isWin: boolean;
+  exchange?: { name: string };
+  externalId?: string;
 }
+
+export type AccountingStatus = "matched" | "imported" | "needs-review";
 
 export interface AccountingFlow {
   exchangeId?: string;
@@ -27,20 +31,65 @@ export interface AccountingFlow {
 export function applyAccountFlowAccountingToTrades<T extends AccountedTrade>(
   trades: T[],
   flows: AccountingFlow[]
-): T[] {
-  if (trades.length === 0 || flows.length === 0) return trades;
+): (T & { accountingStatus: AccountingStatus })[] {
+  const assigned = trades.map(() => [] as AccountingFlow[]);
+  const ambiguous = new Set<number>();
+  const unallocatedFunding = new Set<number>();
 
-  return trades.map((trade) => {
-    const matchedFlows = flows.filter((flow) => matchesTradeWindow(trade, flow));
+  // Resolve ownership across the complete candidate set, before applying UI filters.
+  // A shared time window is not sufficient evidence to assign a flow to either trade.
+  for (const flow of flows) {
+    const candidates: number[] = [];
+    trades.forEach((trade, index) => {
+      if (matchesTradeWindow(trade, flow)) candidates.push(index);
+    });
+    // Open positions are not stored here. Even one closed candidate cannot prove
+    // ownership of an account-level funding payment; keep it in the account curve.
+    if (flow.type === "FUNDING_FEE") {
+      candidates.forEach((index) => unallocatedFunding.add(index));
+      continue;
+    }
+    if (candidates.length === 1) assigned[candidates[0]].push(flow);
+    if (candidates.length > 1) candidates.forEach((index) => ambiguous.add(index));
+  }
+
+  return trades.map((trade, index) => {
+    const matchedFlows = assigned[index];
     const realisedFlows = matchedFlows.filter((flow) => flow.type === "REALIZED_PNL");
 
-    if (realisedFlows.length === 0) {
-      return trade;
+    if (ambiguous.has(index) || realisedFlows.length === 0 || !isBinanceGrossTrade(trade)) {
+      // Known Binance imports store gross PnL. Other records retain their import basis.
+      // Keep that storage contract so existing records do not need a destructive rewrite.
+      const netPnl = isBinanceGrossTrade(trade)
+        ? roundAccountingAmount(trade.realizedPnl - trade.fee + trade.fundingFee)
+        : trade.realizedPnl;
+      return {
+        ...trade,
+        realizedPnl: netPnl,
+        pnlPercent: trade.entryValue > 0 ? (netPnl / trade.entryValue) * 100 : 0,
+        isWin: netPnl > 0,
+        accountingStatus: ambiguous.has(index) || unallocatedFunding.has(index) || matchedFlows.length > 0 || trade.exchange?.name === "binance" || trade.exchange?.name === "hyperliquid"
+          ? "needs-review" as const
+          : "imported" as const,
+      };
     }
 
     const grossPnl = sumFlowAmounts(realisedFlows);
     const commission = sumFlowAmounts(matchedFlows.filter((flow) => flow.type === "COMMISSION"));
-    const fundingFee = sumFlowAmounts(matchedFlows.filter((flow) => flow.type === "FUNDING_FEE"));
+    const fundingFee = trade.fundingFee;
+    if (isBinanceGrossTrade(trade) && (
+      Math.abs(grossPnl - trade.realizedPnl) > 0.0000001 ||
+      Math.abs(commission + trade.fee) > 0.0000001
+    )) {
+      const netPnl = roundAccountingAmount(trade.realizedPnl - trade.fee + trade.fundingFee);
+      return {
+        ...trade,
+        realizedPnl: netPnl,
+        pnlPercent: trade.entryValue > 0 ? (netPnl / trade.entryValue) * 100 : 0,
+        isWin: netPnl > 0,
+        accountingStatus: "needs-review" as const,
+      };
+    }
     const netPnl = roundAccountingAmount(grossPnl + commission + fundingFee);
     const fee = roundAccountingAmount(-commission);
 
@@ -51,6 +100,7 @@ export function applyAccountFlowAccountingToTrades<T extends AccountedTrade>(
       fundingFee,
       pnlPercent: trade.entryValue > 0 ? (netPnl / trade.entryValue) * 100 : 0,
       isWin: netPnl > 0,
+      accountingStatus: unallocatedFunding.has(index) ? "needs-review" as const : "matched" as const,
     };
   });
 }
@@ -61,12 +111,19 @@ function matchesTradeWindow(trade: AccountedTrade, flow: AccountingFlow): boolea
     return false;
   }
   if (flow.symbol !== trade.symbol) return false;
-  if (flow.exchangeId && flow.exchangeId !== trade.exchangeId) return false;
+  if (flow.exchangeId !== trade.exchangeId) return false;
 
   const flowTime = flow.time.getTime();
   return (
     flowTime >= trade.entryTime.getTime() - ACCOUNTING_WINDOW_TOLERANCE_MS &&
     flowTime <= trade.exitTime.getTime() + ACCOUNTING_WINDOW_TOLERANCE_MS
+  );
+}
+
+function isBinanceGrossTrade(trade: AccountedTrade): boolean {
+  return trade.exchange?.name === "binance" && (
+    trade.externalId?.startsWith("binance_position_") === true ||
+    trade.externalId?.startsWith("binance_order_") === true
   );
 }
 

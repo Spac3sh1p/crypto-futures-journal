@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { buildTradeHistoryHref, type TradeHistoryScope } from "@/lib/dashboard/trade-history-routing";
 import type { SymbolReport } from "@/lib/dashboard/analytics-transforms";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import type { Locale } from "@/lib/i18n";
@@ -14,7 +16,7 @@ function formatDuration(seconds: number, locale: Locale): string {
 
 const PAGE_SIZE = 10;
 
-export function SymbolsReport({ data }: { data: SymbolReport[] }) {
+export function SymbolsReport({ data, scope }: { data: SymbolReport[]; scope?: TradeHistoryScope }) {
   const { dictionary, locale } = useI18n();
   const text = dictionary.analytics.symbols;
   const [currentPage, setCurrentPage] = useState(1);
@@ -46,7 +48,7 @@ export function SymbolsReport({ data }: { data: SymbolReport[] }) {
           <tbody>
             {pageRows.map((row) => (
               <tr key={row.symbol} className="border-b border-border-light transition-colors hover:bg-bg-hover/52">
-                <td className="px-4 py-3 font-mono text-text-primary text-xs">{row.symbol}</td>
+                <td className="px-4 py-3 font-mono text-text-primary text-xs"><Link href={buildTradeHistoryHref({ ...scope, symbol: row.symbol })} className="rounded underline decoration-border underline-offset-4 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60">{row.symbol}</Link></td>
                 <td className="px-4 py-3 text-center font-mono text-text-primary text-xs">{row.tradeCount}</td>
                 <td className="px-4 py-3 text-center font-mono text-text-primary text-xs">{row.winRate.toFixed(0)}%</td>
                 <td className="px-4 py-3">

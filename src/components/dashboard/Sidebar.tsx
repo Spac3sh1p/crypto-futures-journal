@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { TradeNavigationLink as Link } from "@/components/dashboard/TradeNavigationGuard";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 
@@ -138,6 +138,7 @@ export function Sidebar({ exchanges = [] }: { exchanges?: SidebarExchange[] }) {
       params.delete("exchangeId");
     }
     params.delete("tradeId");
+    params.delete("page");
     const query = params.toString();
     return query ? `${pathname}?${query}` : pathname;
   }

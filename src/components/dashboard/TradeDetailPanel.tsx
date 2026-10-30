@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useTradeNavigation } from "./TradeNavigationGuard";
 import { MiniKlineChart } from "./MiniKlineChart";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { template } from "@/lib/i18n";
 import { formatMoney, formatTradeDateTimeParts } from "@/lib/formatters";
 
+import type { AccountingStatus } from "@/lib/dashboard/trade-accounting";
+
 interface TradeDetail {
+  accountingStatus?: AccountingStatus;
   id: string;
   exchangeName: string;
   symbol: string;
@@ -33,9 +37,14 @@ const PRESET_TAG_KEYS = [
 
 const DETAIL_TABS = ["chart", "fills", "notes"] as const;
 
-export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
+export function TradeDetailPanel({ trade, onTradeUpdated, onDirtyChange }: {
+  trade: TradeDetail;
+  onTradeUpdated?: (id: string, changes: { notes?: string | null; tags?: string | null }) => void;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const { dictionary, locale } = useI18n();
   const text = dictionary.tradeDetail;
+  const { setBlocked: setNavigationBlocked } = useTradeNavigation();
   const [activeTab, setActiveTab] = useState<"chart" | "fills" | "notes">("chart");
   const [statusMessage, setStatusMessage] = useState<{ text: string; tone: "success" | "error" } | null>(null);
 
@@ -59,8 +68,23 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
   const tabId = (tab: string) => `trade-${trade.id}-${tab}-tab`;
   const panelId = (tab: string) => `trade-${trade.id}-${tab}-panel`;
 
+  const dirty = (editingNotes && notesDraft !== notes) || newTag.trim().length > 0 || noteSaving || tagSaving;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+    setNavigationBlocked(dirty);
+    const handleUnload = (event: BeforeUnloadEvent) => {
+      if (dirty) event.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => { window.removeEventListener("beforeunload", handleUnload); onDirtyChange?.(false); setNavigationBlocked(false); };
+  }, [dirty, onDirtyChange, setNavigationBlocked]);
+
   // Save tags to API
   const saveTags = useCallback(async (newTags: string[]) => {
+    if (editingNotes && notesDraft !== notes) {
+      setStatusMessage({ text: dictionary.tradeFilters.unsaved, tone: "error" });
+      return false;
+    }
     setTagSaving(true);
     setStatusMessage(null);
     try {
@@ -71,27 +95,31 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
         body: JSON.stringify({ tags: tagsStr }),
       });
       const json = await res.json();
-      if (!json.success) {
+      if (!res.ok || !json.success) {
         throw new Error(json.message || "Failed to save tags");
       }
       setTags(newTags);
+      onTradeUpdated?.(trade.id, { tags: tagsStr });
       setStatusMessage({ text: text.tagsSaved, tone: "success" });
+      return true;
     } catch {
       setStatusMessage({ text: text.tagsSaveFailed, tone: "error" });
+      return false;
     } finally {
       setTagSaving(false);
     }
-  }, [text.tagsSaveFailed, text.tagsSaved, trade.id]);
+  }, [dictionary.tradeFilters.unsaved, editingNotes, notesDraft, notes, onTradeUpdated, text.tagsSaveFailed, text.tagsSaved, trade.id]);
 
   // Add a tag
   const addTag = useCallback(async (tag: string) => {
     const trimmed = tag.trim();
-    if (!trimmed || tags.includes(trimmed)) return;
+    if (!trimmed || tags.includes(trimmed) || tagSaving) return;
     const updated = [...tags, trimmed];
-    await saveTags(updated);
-    setNewTag("");
-    setShowTagInput(false);
-  }, [tags, saveTags]);
+    if (await saveTags(updated)) {
+      setNewTag("");
+      setShowTagInput(false);
+    }
+  }, [tags, tagSaving, saveTags]);
 
   // Remove a tag
   const removeTag = useCallback(async (tag: string) => {
@@ -110,10 +138,11 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
         body: JSON.stringify({ notes: notesDraft || null }),
       });
       const json = await res.json();
-      if (!json.success) {
+      if (!res.ok || !json.success) {
         throw new Error(json.message || "Failed to save notes");
       }
       setNotes(notesDraft);
+      onTradeUpdated?.(trade.id, { notes: notesDraft || null });
       setEditingNotes(false);
       setStatusMessage({ text: text.notesSaved, tone: "success" });
     } catch {
@@ -121,10 +150,12 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
     } finally {
       setNoteSaving(false);
     }
-  }, [notesDraft, text.notesSaveFailed, text.notesSaved, trade.id]);
+  }, [onTradeUpdated, notesDraft, text.notesSaveFailed, text.notesSaved, trade.id]);
 
   return (
     <div className="border-t border-border bg-[#08111D]">
+      {trade.accountingStatus && <p className="px-5 pt-3 text-xs text-text-muted">{dictionary.accounting.title} · <span className={trade.accountingStatus === "needs-review" ? "text-yellow" : "text-text-secondary"}>{dictionary.accounting[trade.accountingStatus]}</span></p>}
+      {dirty && <p role="status" className="px-5 pt-3 text-xs text-yellow">{dictionary.tradeFilters.unsaved}</p>}
       {/* Tabs */}
       <div className="flex gap-5 border-b border-border px-5" role="tablist">
         {DETAIL_TABS.map((tab) => (
@@ -137,6 +168,16 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
             aria-controls={panelId(tab)}
             tabIndex={activeTab === tab ? 0 : -1}
             onClick={() => setActiveTab(tab)}
+            onKeyDown={(event) => {
+              const current = DETAIL_TABS.indexOf(tab);
+              const next = event.key === "ArrowRight" ? (current + 1) % DETAIL_TABS.length
+                : event.key === "ArrowLeft" ? (current + DETAIL_TABS.length - 1) % DETAIL_TABS.length
+                : event.key === "Home" ? 0 : event.key === "End" ? DETAIL_TABS.length - 1 : -1;
+              if (next < 0) return;
+              event.preventDefault();
+              setActiveTab(DETAIL_TABS[next]);
+              document.getElementById(tabId(DETAIL_TABS[next]))?.focus();
+            }}
             className={`border-b-2 py-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 ${
               activeTab === tab
                 ? "border-yellow text-yellow"
@@ -326,6 +367,7 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                   <div className="space-y-2">
                     <textarea
                       value={notesDraft}
+                      disabled={noteSaving}
                       onChange={(e) => setNotesDraft(e.target.value)}
                       placeholder={text.notePlaceholder}
                       aria-label={text.noteAria}
@@ -344,6 +386,7 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                       </button>
                       <button
                         type="button"
+                        disabled={noteSaving}
                         onClick={() => { setEditingNotes(false); setNotesDraft(notes); }}
                         className="rounded-lg border border-border px-3 py-1.5 text-[11px] text-text-muted transition-colors hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
                       >
@@ -380,6 +423,7 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
           aria-labelledby={tabId("fills")}
           className="overflow-x-auto p-4 text-sm text-text-muted"
         >
+          <p className="mb-3 text-xs leading-relaxed">{template(dictionary.accounting.fillHint, { fee: formatMoney(-Math.abs(trade.fee)) })}</p>
           <table className="w-full min-w-[560px] text-xs">
             <caption className="sr-only">{text.fillsCaption}</caption>
             <thead>
@@ -396,14 +440,14 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                 <td className="py-2 text-green">{text.open}</td>
                 <td className="py-2 text-right font-mono">${trade.entryPrice.toFixed(4)}</td>
                 <td className="py-2 text-right font-mono">--</td>
-                <td className="py-2 text-right font-mono text-red">{formatMoney(-Math.abs(trade.fee * 0.5))}</td>
+                <td className="py-2 text-right font-mono text-red">--</td>
                 <td className="py-2 text-right font-mono">{entryDateTime.full}</td>
               </tr>
               <tr>
                 <td className="py-2 text-red">{text.close}</td>
                 <td className="py-2 text-right font-mono">${trade.exitPrice.toFixed(4)}</td>
                 <td className="py-2 text-right font-mono">--</td>
-                <td className="py-2 text-right font-mono text-red">{formatMoney(-Math.abs(trade.fee * 0.5))}</td>
+                <td className="py-2 text-right font-mono text-red">--</td>
                 <td className="py-2 text-right font-mono">{exitDateTime.full}</td>
               </tr>
             </tbody>
@@ -423,6 +467,7 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
               <div className="space-y-3">
                 <textarea
                   value={notesDraft}
+                  disabled={noteSaving}
                   onChange={(e) => setNotesDraft(e.target.value)}
                   placeholder={text.noteLongPlaceholder}
                   aria-label={text.noteAria}
@@ -441,6 +486,7 @@ export function TradeDetailPanel({ trade }: { trade: TradeDetail }) {
                   </button>
                   <button
                     type="button"
+                    disabled={noteSaving}
                     onClick={() => { setEditingNotes(false); setNotesDraft(notes); }}
                     className="rounded-lg border border-border px-4 py-2 text-xs text-text-muted transition-colors hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
                   >

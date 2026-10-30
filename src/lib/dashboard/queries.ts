@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { cache } from "react";
 import { subDays, startOfDay, endOfDay } from "date-fns";
 import { type TradeRange } from "@/lib/formatters";
 import { getMonthDateRange } from "@/lib/dashboard/calendar-transforms";
@@ -9,17 +10,8 @@ import {
   TRADING_ACCOUNTING_FLOW_TYPES,
 } from "@/lib/dashboard/trade-accounting";
 
-export async function getTradesInRange(
-  range: TradeRange,
-  exchangeId?: string
-) {
-  const startDate = getRangeStartDate(range);
-
+const getAccountedTrades = cache(async (exchangeId?: string) => {
   const where: Prisma.TradeWhereInput = {};
-
-  if (startDate) {
-    where.exitTime = { gte: startDate };
-  }
 
   if (exchangeId) {
     where.exchangeId = exchangeId;
@@ -39,6 +31,12 @@ export async function getTradesInRange(
     trades,
     await getAccountingFlowsForTrades(trades)
   );
+});
+
+export async function getTradesInRange(range: TradeRange, exchangeId?: string) {
+  const startDate = getRangeStartDate(range);
+  const trades = await getAccountedTrades(exchangeId);
+  return trades.filter((trade) => !startDate || trade.exitTime >= startDate);
 }
 
 export async function getTradesForMonth(
@@ -47,43 +45,19 @@ export async function getTradesForMonth(
 ) {
   const { start, end } = getMonthDateRange(month);
 
-  const where: Prisma.TradeWhereInput = {
-    exitTime: {
-      gte: start,
-      lt: end,
-    },
-  };
-
-  if (exchangeId) {
-    where.exchangeId = exchangeId;
-  }
-
-  const trades = await prisma.trade.findMany({
-    where,
-    include: {
-      exchange: {
-        select: { name: true },
-      },
-    },
-    orderBy: { exitTime: "asc" },
-  });
-
-  return applyAccountFlowAccountingToTrades(
-    trades,
-    await getAccountingFlowsForTrades(trades)
-  );
+  const trades = await getAccountedTrades(exchangeId);
+  return trades.filter((trade) => trade.exitTime >= start && trade.exitTime < end)
+    .sort((a, b) => a.exitTime.getTime() - b.exitTime.getTime());
 }
 
-export function getRangeStartDate(range: TradeRange): Date | undefined {
-  const now = new Date();
-
+export function getRangeStartDate(range: TradeRange, now = new Date()): Date | undefined {
   switch (range) {
     case "7d":
-      return startOfDay(subDays(now, 7));
+      return startOfDay(subDays(now, 6));
     case "30d":
-      return startOfDay(subDays(now, 30));
+      return startOfDay(subDays(now, 29));
     case "90d":
-      return startOfDay(subDays(now, 90));
+      return startOfDay(subDays(now, 89));
     case "all":
       return undefined;
   }
@@ -100,6 +74,8 @@ export async function getAccountFlowsForCurve(exchangeId?: string) {
     where,
     orderBy: { time: "asc" },
     select: {
+      exchangeId: true,
+      exchange: { select: { name: true, label: true } },
       type: true,
       asset: true,
       amount: true,
@@ -142,33 +118,11 @@ export async function getExchanges() {
 
 export async function getTodayPnl(exchangeId?: string): Promise<number> {
   const today = new Date();
-
-  const where: Prisma.TradeWhereInput = {
-    exitTime: {
-      gte: startOfDay(today),
-      lte: endOfDay(today),
-    },
-  };
-
-  if (exchangeId) {
-    where.exchangeId = exchangeId;
-  }
-
-  const trades = await prisma.trade.findMany({
-    where,
-    include: {
-      exchange: {
-        select: { name: true },
-      },
-    },
-  });
-
-  const adjustedTrades = applyAccountFlowAccountingToTrades(
-    trades,
-    await getAccountingFlowsForTrades(trades)
-  );
-
-  return adjustedTrades.reduce((sum, trade) => sum + trade.realizedPnl, 0);
+  const start = startOfDay(today);
+  const end = endOfDay(today);
+  const trades = await getAccountedTrades(exchangeId);
+  return trades.filter((trade) => trade.exitTime >= start && trade.exitTime <= end)
+    .reduce((sum, trade) => sum + trade.realizedPnl, 0);
 }
 
 async function getAccountingFlowsForTrades<T extends {

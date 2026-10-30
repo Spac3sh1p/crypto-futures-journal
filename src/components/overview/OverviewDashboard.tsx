@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { calculateMetrics } from "@/lib/analysis";
 import {
   getAccountFlowsForCurve,
@@ -17,7 +16,8 @@ import {
 } from "@/lib/formatters";
 import { getWalletBalance } from "@/lib/exchange/balance";
 import { getServerDictionary } from "@/lib/i18n-server";
-import { OverviewCurveChart } from "@/components/overview/OverviewCurveChart";
+import { OverviewPerformanceChart } from "@/components/overview/OverviewPerformanceChart";
+import { AccountingNotice } from "@/components/dashboard/AccountingNotice";
 import { OverviewRecentTrades } from "@/components/overview/OverviewRecentTrades";
 import { PeriodReviewPanel } from "@/components/overview/PeriodReviewPanel";
 import { SymbolTop10Table } from "@/components/overview/SymbolTop10Table";
@@ -35,6 +35,7 @@ interface OverviewDashboardProps {
 function serializeTrade(trade: Awaited<ReturnType<typeof getTradesInRange>>[number]): SerializedTrade {
   return {
     id: trade.id,
+    accountingStatus: trade.accountingStatus,
     exchangeName: trade.exchange.name,
     symbol: trade.symbol,
     side: trade.side,
@@ -59,10 +60,6 @@ function formatBalance(value: number): string {
   return `${prefix}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatNullableRatio(value: number | null): string {
-  return value === null ? "--" : value.toFixed(2);
-}
-
 function KpiTile({
   label,
   value,
@@ -76,9 +73,9 @@ function KpiTile({
 }) {
   const valueColor = tone === "green" ? "text-green" : tone === "red" ? "text-red" : "text-text-primary";
   return (
-    <div className="trading-card min-h-[112px] px-4 py-3.5">
+    <div className="trading-card min-w-0 min-h-[112px] px-4 py-3.5">
       <div className="terminal-label">{label}</div>
-      <div className={`mt-2 font-mono text-[24px] font-bold leading-tight tabular-nums min-[1500px]:text-[26px] ${valueColor}`}>{value}</div>
+      <div data-kpi-value title={value} className={`mt-2 break-all font-mono text-[clamp(1.125rem,1.7vw,1.75rem)] font-bold leading-tight tabular-nums ${valueColor}`}>{value}</div>
       {subValue && <div className="mt-2 text-xs font-medium text-text-muted">{subValue}</div>}
     </div>
   );
@@ -103,12 +100,13 @@ export async function OverviewDashboard({
     : formatBalance(walletBalance.total);
 
   const rangeStart = getRangeStartDate(range);
-  const curve = accountFlows.length > 0
-    ? buildAccountFlowPnlSeries(accountFlows, rangeStart)
-    : buildCumulativePnlSeries(trades);
-  const latestPoint = curve.at(-1);
-  const periodPnl = latestPoint?.value ?? metrics.totalPnl;
-  const sharpeRatio = calculateAnnualizedSharpeRatio(curve);
+  const curve = buildCumulativePnlSeries(trades);
+  const flowCurve = buildAccountFlowPnlSeries(accountFlows, rangeStart);
+  const sharpeRatio = flowCurve.length && flowCurve.every((point) => point.netDeposits > 0)
+    ? calculateAnnualizedSharpeRatio(flowCurve) : null;
+  const flowAccounts = [...new Map(accountFlows.filter((flow) => flow.asset === "USDT")
+    .map((flow) => [flow.exchangeId, flow.exchange.label ? `${flow.exchange.name} · ${flow.exchange.label}` : flow.exchange.name])).values()];
+  const scope = { range, exchangeId };
   const recentTrades = [...trades]
     .sort((a, b) => b.exitTime.getTime() - a.exitTime.getTime())
     .slice(0, 6)
@@ -117,16 +115,11 @@ export async function OverviewDashboard({
 
   return (
     <div className="space-y-4">
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTile
           label={dictionary.performance.metrics.totalPnl}
-          value={formatMoney(periodPnl)}
-          tone={periodPnl >= 0 ? "green" : "red"}
-        />
-        <KpiTile
-          label={text.balance}
-          value={balanceValue}
-          tone={walletBalance.total !== null && walletBalance.total >= 0 ? "green" : "neutral"}
+          value={formatMoney(metrics.totalPnl)}
+          tone={metrics.totalPnl >= 0 ? "green" : "red"}
         />
         <KpiTile
           label={text.winRate}
@@ -134,20 +127,9 @@ export async function OverviewDashboard({
           subValue={`${metrics.winCount}${dictionary.common.wins} / ${metrics.lossCount}${dictionary.common.losses}`}
         />
         <KpiTile
-          label={dictionary.performance.metrics.sharpeRatio}
-          value={formatNullableRatio(sharpeRatio)}
-          subValue={dictionary.performance.metrics.sharpeRatioSub}
-          tone={sharpeRatio !== null && sharpeRatio > 0 ? "green" : "neutral"}
-        />
-        <KpiTile
           label={dictionary.performance.metrics.profitFactor}
           value={metrics.profitFactor.toFixed(2)}
           subValue={dictionary.performance.metrics.profitFactorSub}
-        />
-        <KpiTile
-          label={text.trades}
-          value={String(metrics.totalTrades)}
-          subValue={`${dictionary.common.win} ${metrics.winCount} / ${dictionary.common.loss} ${metrics.lossCount}`}
         />
         <KpiTile
           label={text.maxDrawdown}
@@ -157,30 +139,22 @@ export async function OverviewDashboard({
         />
       </section>
 
-      <section>
-        <div className="trading-panel min-w-0 p-5">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="terminal-section-title">{dictionary.performance.cumulative.title}</h2>
-              <p className="mt-1 text-xs font-medium text-text-muted">{dictionary.performance.cumulative.subtitle}</p>
-            </div>
-          </div>
-          <div className="-mx-2 overflow-x-auto px-2">
-            <Suspense>
-              <OverviewCurveChart data={curve} />
-            </Suspense>
-          </div>
-        </div>
-      </section>
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg border border-border px-4 py-3 text-xs text-text-muted">
+        <span>{dictionary.accounting.currentBalance} <strong className="ml-2 font-mono text-sm font-semibold text-text-secondary">{balanceValue}</strong></span>
+        <span>{dictionary.accounting.tradeCount} <strong className="ml-2 font-mono text-sm font-semibold text-text-secondary">{metrics.totalTrades}</strong></span>
+        <span>{dictionary.common.win} {metrics.winCount} / {dictionary.common.loss} {metrics.lossCount}</span>
+      </div>
+      <AccountingNotice trades={trades} text={dictionary.accounting} />
+      <OverviewPerformanceChart trades={curve} flows={flowCurve.map((point) => ({ ...point, returnPct: point.netDeposits > 0 ? point.returnPct : undefined }))} accounts={flowAccounts} sharpe={sharpeRatio} />
 
-      <section className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-        <SymbolTop10Table data={symbolTop10} text={text.symbolTop10} />
-        <PeriodReviewPanel text={text.periodReview} />
+      <section className="grid grid-cols-1 items-start gap-4 min-[1440px]:grid-cols-2">
+        <SymbolTop10Table data={symbolTop10} text={text.symbolTop10} scope={scope} />
+        <PeriodReviewPanel text={text.periodReview} scope={scope} />
       </section>
 
       <section>
         <div id="recent-trades">
-          <OverviewRecentTrades trades={recentTrades} />
+          <OverviewRecentTrades key={`${range}-${exchangeId ?? "all"}`} trades={recentTrades} scope={scope} />
         </div>
       </section>
     </div>

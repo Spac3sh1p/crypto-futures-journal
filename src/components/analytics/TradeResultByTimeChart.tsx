@@ -3,10 +3,12 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
+import Link from "next/link";
+import { buildTradeHistoryHref, type TradeHistoryScope } from "@/lib/dashboard/trade-history-routing";
 import type { DayTimeBar } from "@/lib/dashboard/analytics-transforms";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 
-export function TradeResultByTimeChart({ data }: { data: DayTimeBar[] }) {
+export function TradeResultByTimeChart({ data, scope }: { data: DayTimeBar[]; scope?: TradeHistoryScope }) {
   const { dictionary } = useI18n();
   const text = dictionary.analytics.charts;
 
@@ -35,6 +37,13 @@ export function TradeResultByTimeChart({ data }: { data: DayTimeBar[] }) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      <nav aria-label={text.resultByTime} className="mt-3 flex flex-wrap gap-2 border-t border-border-light pt-3">
+        <span className="self-center text-[11px] text-text-muted">{dictionary.tradeFilters.drillDown}</span>
+        {data.map((item, index) => (
+          <Link key={item.label} href={buildTradeHistoryHref({ ...scope, entrySlot: String(index * 2) })} className="rounded border border-border px-2 py-1 text-[11px] text-text-secondary hover:border-yellow/50 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60">{item.label}</Link>
+        ))}
+      </nav>
+
     </div>
   );
 }
