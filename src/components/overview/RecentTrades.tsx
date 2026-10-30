@@ -3,14 +3,13 @@
 import { useCallback, useState } from "react";
 import { TradeNavigationLink as Link } from "@/components/dashboard/TradeNavigationGuard";
 import { buildTradeHistoryHref, type TradeHistoryScope } from "@/lib/dashboard/trade-history-routing";
-import { toPreviewHref } from "@/lib/dashboard/preview-routing";
-import type { SerializedTrade } from "@/components/dashboard/TradeHistoryTable";
+import type { SerializedTrade } from "@/lib/dashboard/serialized-trade";
 import { useI18n } from "@/components/i18n/LanguageProvider";
-import { EmptyState, Panel, PanelHeader } from "@/components/v2/ui/Panel";
-import { TradeDetailV2 } from "./TradeDetailV2";
-import { TradeRowV2, TradeTableHeaderV2 } from "./TradeRowV2";
+import { EmptyState, Panel, PanelHeader } from "@/components/ui/Panel";
+import { TradeDetailPanel } from "@/components/trades/TradeDetailPanel";
+import { TradeRow, TradeTableHeader } from "@/components/trades/TradeRow";
 
-export function RecentTradesV2({ trades: initialTrades, scope }: { trades: SerializedTrade[]; scope?: TradeHistoryScope }) {
+export function RecentTrades({ trades: initialTrades, scope }: { trades: SerializedTrade[]; scope?: TradeHistoryScope }) {
   const { dictionary } = useI18n();
   const text = dictionary.overview;
   const [updates, setUpdates] = useState<Record<string, Partial<SerializedTrade>>>({});
@@ -28,11 +27,11 @@ export function RecentTradesV2({ trades: initialTrades, scope }: { trades: Seria
         subtitle={text.recentTradesHint}
         actions={
           <Link
-            href={toPreviewHref(buildTradeHistoryHref(scope))}
+            href={buildTradeHistoryHref(scope)}
             onClick={(event) => { if (dirty) event.preventDefault(); }}
-            className="v2-button no-underline"
+            className="ui-button no-underline"
           >
-            {dictionary.preview.viewAll}
+            {dictionary.shell.viewAll}
           </Link>
         }
       />
@@ -41,13 +40,13 @@ export function RecentTradesV2({ trades: initialTrades, scope }: { trades: Seria
       ) : (
         <div className="overflow-x-auto">
           <div className="lg:min-w-[1040px]">
-            <TradeTableHeaderV2 />
+            <TradeTableHeader />
             {trades.map((trade) => {
               const isExpanded = expandedId === trade.id;
-              const detailId = `preview-recent-detail-${trade.id}`;
+              const detailId = `recent-detail-${trade.id}`;
               return (
                 <div key={trade.id}>
-                  <TradeRowV2
+                  <TradeRow
                     trade={trade}
                     expanded={isExpanded}
                     controlsId={detailId}
@@ -55,7 +54,7 @@ export function RecentTradesV2({ trades: initialTrades, scope }: { trades: Seria
                   />
                   {isExpanded && (
                     <div id={detailId} className="border-b border-line">
-                      <TradeDetailV2 key={trade.id} trade={trade} onTradeUpdated={updateTrade} onDirtyChange={setDirty} />
+                      <TradeDetailPanel key={trade.id} trade={trade} onTradeUpdated={updateTrade} onDirtyChange={setDirty} />
                     </div>
                   )}
                 </div>

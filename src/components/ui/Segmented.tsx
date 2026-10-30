@@ -17,7 +17,7 @@ export function Segmented<T extends string>({
   ariaLabel?: string;
 }) {
   return (
-    <div className="v2-segmented" role="group" aria-label={ariaLabel}>
+    <div className="ui-segmented" role="group" aria-label={ariaLabel}>
       {options.map((option) => (
         <button
           key={option.value}

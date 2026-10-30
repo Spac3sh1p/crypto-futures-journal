@@ -17,5 +17,10 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   const trades = await getTradesForMonth(month, params.exchangeId);
   const summary = buildMonthlyCalendar(trades, month);
 
-  return <div className="space-y-4"><AccountingNotice trades={trades} text={dictionaries[locale].accounting} /><MonthlyCalendar summary={summary} locale={locale} exchangeId={params.exchangeId} /></div>;
+  return (
+    <div className="space-y-4">
+      <MonthlyCalendar summary={summary} locale={locale} exchangeId={params.exchangeId} />
+      <AccountingNotice trades={trades} text={dictionaries[locale].accounting} />
+    </div>
+  );
 }

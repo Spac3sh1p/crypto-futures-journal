@@ -12,7 +12,7 @@ import {
 import { buildSymbolTop10Report } from "@/lib/dashboard/analytics-transforms";
 import { getWalletBalance } from "@/lib/exchange/balance";
 import type { TradeRange } from "@/lib/formatters";
-import type { SerializedTrade } from "@/components/dashboard/TradeHistoryTable";
+import type { SerializedTrade } from "@/lib/dashboard/serialized-trade";
 
 export type AccountedTrade = Awaited<ReturnType<typeof getTradesInRange>>[number];
 

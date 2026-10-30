@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/components/i18n/LanguageProvider";
-import { Panel } from "@/components/v2/ui/Panel";
+import { Panel } from "@/components/ui/Panel";
 
 export interface ExchangeRecord {
   id: string;
@@ -29,7 +29,7 @@ function displayName(name: string): string {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-export function ExchangeRowV2({ exchange, onDelete, onSync }: {
+export function ExchangeRow({ exchange, onDelete, onSync }: {
   exchange: ExchangeRecord;
   onDelete: (id: string) => Promise<void> | void;
   onSync: (id: string) => Promise<void> | void;
@@ -68,20 +68,20 @@ export function ExchangeRowV2({ exchange, onDelete, onSync }: {
             {exchange.label && <span className="text-[13px] text-ink-2">{exchange.label}</span>}
             <span className={`h-1.5 w-1.5 rounded-full ${exchange.isActive ? "bg-profit" : "bg-loss"}`} aria-hidden="true" />
           </div>
-          <div className="v2-num mt-0.5 flex flex-wrap gap-x-4 text-[12px] text-ink-3">
+          <div className="ui-num mt-0.5 flex flex-wrap gap-x-4 text-[12px] text-ink-3">
             <span>{exchange.apiKey}</span>
             <span>{text.trades} <span className="text-ink-2">{exchange._count.trades}</span></span>
             <span>{text.lastSync} <span className="text-ink-2">{lastSyncText}</span></span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={handleSync} disabled={syncing || !exchange.isActive} className="v2-button">
+          <button type="button" onClick={handleSync} disabled={syncing || !exchange.isActive} className="ui-button">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true" className={syncing ? "animate-spin" : ""}>
               <path d="M20 12a8 8 0 01-13.66 5.66M4 12A8 8 0 0117.66 6.34M18 3v4h-4M6 21v-4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             {syncing ? dictionary.common.syncing : dictionary.common.sync}
           </button>
-          <button type="button" onClick={handleDelete} disabled={deleting} className="v2-button text-loss hover:text-loss">
+          <button type="button" onClick={handleDelete} disabled={deleting} className="ui-button text-loss hover:text-loss">
             {deleting ? dictionary.common.deleting : dictionary.common.delete}
           </button>
         </div>

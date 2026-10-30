@@ -17,7 +17,6 @@ interface MiniKlineChartProps {
   entryTime: string;
   exitTime: string;
   side: string;
-  variant?: MiniKlineVariant;
 }
 
 interface KlineApiResponse {
@@ -45,8 +44,6 @@ const PLOT_TOP = 18;
 const PLOT_BOTTOM = 26;
 const SUPPORTED_KLINE_EXCHANGES = new Set(["binance", "bybit"]);
 
-export type MiniKlineVariant = "classic" | "v2";
-
 interface KlinePalette {
   up: string;
   down: string;
@@ -68,48 +65,26 @@ interface KlinePalette {
   textClass: string;
 }
 
-// classic = 正式页面现用配色；v2 = /preview 读取 CSS 变量，随配色切换。
-const KLINE_PALETTES: Record<MiniKlineVariant, KlinePalette> = {
-  classic: {
-    up: "#22ab94",
-    down: "#ef5350",
-    line: "#7db4ff",
-    gridMajor: "#263247",
-    gridMinor: "#182235",
-    chartBg: "#080f1b",
-    scaleBg: "#0c1422",
-    axisText: "#7b8798",
-    lastPriceLine: "#7b8798",
-    lastPriceBg: "#111c2d",
-    lastPriceStroke: "#344155",
-    lastPriceText: "#c4d0df",
-    markerText: "#061018",
-    headerClass: "rounded-lg border border-[#263448] bg-[#0d1422]",
-    chipClass: "rounded-md bg-[#121b2b] px-2 py-1 font-mono text-[10px] font-semibold text-text-secondary ring-1 ring-[#27364b]",
-    placeholderClass: "rounded-lg border border-[#263448] bg-[#0b111d]",
-    frameClass: "rounded-lg border border-[#263448]",
-    textClass: "font-mono",
-  },
-  v2: {
-    up: "var(--v2-profit)",
-    down: "var(--v2-loss)",
-    line: "var(--v2-ink-2)",
-    gridMajor: "var(--v2-line-strong)",
-    gridMinor: "var(--v2-line)",
-    chartBg: "var(--v2-canvas)",
-    scaleBg: "var(--v2-surface)",
-    axisText: "var(--v2-ink-3)",
-    lastPriceLine: "var(--v2-ink-3)",
-    lastPriceBg: "var(--v2-surface-2)",
-    lastPriceStroke: "var(--v2-line-strong)",
-    lastPriceText: "var(--v2-ink)",
-    markerText: "#0b0b0b",
-    headerClass: "rounded-md border border-line-strong bg-surface",
-    chipClass: "v2-num rounded-sm bg-surface-2 px-2 py-1 text-[11px] text-ink-2",
-    placeholderClass: "rounded-md border border-line-strong bg-canvas",
-    frameClass: "rounded-md border border-line-strong",
-    textClass: "v2-num",
-  },
+// 颜色全部读界面令牌，随主题变化；价格线用中性色，只有买卖标记带盈亏色。
+const PALETTE: KlinePalette = {
+  up: "var(--ui-profit)",
+  down: "var(--ui-loss)",
+  line: "var(--ui-ink-2)",
+  gridMajor: "var(--ui-line-strong)",
+  gridMinor: "var(--ui-line)",
+  chartBg: "var(--ui-canvas)",
+  scaleBg: "var(--ui-surface)",
+  axisText: "var(--ui-ink-3)",
+  lastPriceLine: "var(--ui-ink-3)",
+  lastPriceBg: "var(--ui-surface-2)",
+  lastPriceStroke: "var(--ui-line-strong)",
+  lastPriceText: "var(--ui-ink)",
+  markerText: "#0b0b0b",
+  headerClass: "rounded-md border border-line-strong bg-surface",
+  chipClass: "ui-num rounded-sm bg-surface-2 px-2 py-1 text-[11px] text-ink-2",
+  placeholderClass: "rounded-md border border-line-strong bg-canvas",
+  frameClass: "rounded-md border border-line-strong",
+  textClass: "ui-num",
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -188,10 +163,9 @@ export function MiniKlineChart({
   entryTime,
   exitTime,
   side,
-  variant = "classic",
 }: MiniKlineChartProps) {
   const { dictionary, locale } = useI18n();
-  const palette = KLINE_PALETTES[variant];
+  const palette = PALETTE;
   const text = dictionary.miniKline;
   const rawSvgId = useId().replace(/:/g, "");
   const clipId = `mini-kline-clip-${rawSvgId}`;
@@ -370,23 +344,23 @@ export function MiniKlineChart({
   return (
     <div className="relative">
       <div className={`mb-2 flex flex-wrap items-center gap-2 px-3 py-2 ${palette.headerClass}`}>
-        <span className={`${palette.textClass} text-xs font-semibold text-text-primary`}>
+        <span className={`${palette.textClass} text-xs font-semibold text-ink`}>
           {symbol}
         </span>
-        <span className="text-xs font-medium text-text-muted">/</span>
-        <span className="text-xs font-medium text-text-secondary">
+        <span className="text-xs font-medium text-ink-3">/</span>
+        <span className="text-xs font-medium text-ink-2">
           {activeState.interval || text.real} / {text.futures}
         </span>
         {chart && (
           <>
-            <span className="hidden text-xs font-medium text-text-muted sm:inline">/</span>
-            <span className="text-xs font-medium text-text-secondary">
+            <span className="hidden text-xs font-medium text-ink-3 sm:inline">/</span>
+            <span className="text-xs font-medium text-ink-2">
               {text.beforeContext} {formatDuration(chart.beforeSeconds, locale)} · {text.holdingContext} {formatDuration(chart.holdSeconds, locale)} · {text.afterContext} {formatDuration(chart.afterSeconds, locale)}
             </span>
           </>
         )}
         {chart && (
-          <span className="flex w-full flex-wrap items-center gap-1.5 text-xs font-medium text-text-secondary sm:ml-auto sm:w-auto">
+          <span className="flex w-full flex-wrap items-center gap-1.5 text-xs font-medium text-ink-2 sm:ml-auto sm:w-auto">
             <span
               title={template(text.mfeTitle, { price: formatChartPrice(chart.mfePrice) })}
               className={palette.chipClass}
@@ -406,8 +380,8 @@ export function MiniKlineChart({
       {!chart ? (
         <div className={`flex h-[276px] w-full items-center justify-center ${palette.placeholderClass} ${activeState.loading ? "animate-pulse" : ""}`}>
           <div className="text-center">
-            <div className="text-xs font-semibold text-text-secondary" role="status">{placeholderTitle}</div>
-            <div className="mt-1 max-w-md text-xs font-medium text-text-muted">{placeholderMessage}</div>
+            <div className="text-xs font-semibold text-ink-2" role="status">{placeholderTitle}</div>
+            <div className="mt-1 max-w-md text-xs font-medium text-ink-3">{placeholderMessage}</div>
           </div>
         </div>
       ) : (

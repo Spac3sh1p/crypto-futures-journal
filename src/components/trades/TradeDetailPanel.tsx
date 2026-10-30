@@ -44,7 +44,7 @@ function IconPencil() {
   );
 }
 
-export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
+export function TradeDetailPanel({ trade, onTradeUpdated, onDirtyChange }: {
   trade: TradeDetail;
   onTradeUpdated?: (id: string, changes: { notes?: string | null; tags?: string | null }) => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -70,8 +70,8 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
 
   const entryDateTime = formatTradeDateTimeParts(trade.entryTime, locale);
   const exitDateTime = formatTradeDateTimeParts(trade.exitTime, locale);
-  const tabId = (tab: string) => `preview-trade-${trade.id}-${tab}-tab`;
-  const panelId = (tab: string) => `preview-trade-${trade.id}-${tab}-panel`;
+  const tabId = (tab: string) => `trade-${trade.id}-${tab}-tab`;
+  const panelId = (tab: string) => `trade-${trade.id}-${tab}-panel`;
 
   const dirty = (editingNotes && notesDraft !== notes) || newTag.trim().length > 0 || noteSaving || tagSaving;
   useEffect(() => {
@@ -162,13 +162,13 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
         aria-label={text.noteAria}
         autoFocus
         rows={rows}
-        className="v2-field h-auto w-full resize-none py-2 text-[13px] leading-5"
+        className="ui-field h-auto w-full resize-none py-2 text-[13px] leading-5"
       />
       <div className="flex items-center gap-2">
-        <button type="button" onClick={saveNotes} disabled={noteSaving} className="v2-button v2-button-primary h-8">
+        <button type="button" onClick={saveNotes} disabled={noteSaving} className="ui-button ui-button-primary h-8">
           {noteSaving ? dictionary.common.saving : saveLabel}
         </button>
-        <button type="button" disabled={noteSaving} onClick={() => { setEditingNotes(false); setNotesDraft(notes); }} className="v2-button h-8">
+        <button type="button" disabled={noteSaving} onClick={() => { setEditingNotes(false); setNotesDraft(notes); }} className="ui-button h-8">
           {dictionary.common.cancel}
         </button>
       </div>
@@ -207,7 +207,7 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
               setActiveTab(DETAIL_TABS[next]);
               document.getElementById(tabId(DETAIL_TABS[next]))?.focus();
             }}
-            className={`v2-link -mb-px border-b-2 py-3 text-[13px] font-medium no-underline transition-colors ${
+            className={`ui-link -mb-px border-b-2 py-3 text-[13px] font-medium no-underline transition-colors ${
               activeTab === tab ? "border-accent text-ink" : "border-transparent text-ink-3 hover:text-ink-2"
             }`}
           >
@@ -226,7 +226,6 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
         <div id={panelId("chart")} role="tabpanel" aria-labelledby={tabId("chart")} className="flex flex-col gap-4 p-5 xl:flex-row">
           <div className="min-w-0 flex-1">
             <MiniKlineChart
-              variant="v2"
               exchangeName={trade.exchangeName}
               symbol={trade.symbol}
               entryPrice={trade.entryPrice}
@@ -241,11 +240,11 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-md border border-line-strong bg-surface px-3 py-2.5">
                 <span className="block text-[12px] text-ink-3">{text.totalFunding}</span>
-                <span className={`v2-num mt-1 block text-[14px] font-medium ${trade.fundingFee >= 0 ? "text-profit" : "text-loss"}`}>{formatMoney(trade.fundingFee)}</span>
+                <span className={`ui-num mt-1 block text-[14px] font-medium ${trade.fundingFee >= 0 ? "text-profit" : "text-loss"}`}>{formatMoney(trade.fundingFee)}</span>
               </div>
               <div className="rounded-md border border-line-strong bg-surface px-3 py-2.5">
                 <span className="block text-[12px] text-ink-3">{text.fees}</span>
-                <span className="v2-num mt-1 block text-[14px] font-medium text-loss">{formatMoney(-Math.abs(trade.fee))}</span>
+                <span className="ui-num mt-1 block text-[14px] font-medium text-loss">{formatMoney(-Math.abs(trade.fee))}</span>
               </div>
             </div>
 
@@ -258,7 +257,7 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
                   aria-label={text.manageTags}
                   aria-pressed={showTagManager}
                   title={text.manageTags}
-                  className={`v2-link no-underline ${showTagManager ? "text-ink" : "text-ink-3 hover:text-ink-2"}`}
+                  className={`ui-link no-underline ${showTagManager ? "text-ink" : "text-ink-3 hover:text-ink-2"}`}
                 >
                   {text.quickAdd}
                 </button>
@@ -274,7 +273,7 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
                           aria-label={template(text.removeTag, { tag })}
                           onClick={() => removeTag(tag)}
                           disabled={tagSaving}
-                          className="v2-link ml-0.5 text-ink-3 no-underline hover:text-loss"
+                          className="ui-link ml-0.5 text-ink-3 no-underline hover:text-loss"
                         >
                           ×
                         </button>
@@ -296,17 +295,17 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
                       aria-label={text.newTagAria}
                       placeholder={text.tagNamePlaceholder}
                       autoFocus
-                      className="v2-field h-8 min-w-0 flex-1 text-[12px]"
+                      className="ui-field h-8 min-w-0 flex-1 text-[12px]"
                     />
-                    <button type="button" onClick={() => addTag(newTag)} disabled={!newTag.trim() || tagSaving} className="v2-button v2-button-primary h-8 px-2.5 text-[12px]">
+                    <button type="button" onClick={() => addTag(newTag)} disabled={!newTag.trim() || tagSaving} className="ui-button ui-button-primary h-8 px-2.5 text-[12px]">
                       {tagSaving ? "..." : dictionary.common.add}
                     </button>
-                    <button type="button" aria-label={text.cancelAddTag} onClick={() => { setShowTagInput(false); setNewTag(""); }} className="v2-button h-8 px-2.5 text-[12px]">
+                    <button type="button" aria-label={text.cancelAddTag} onClick={() => { setShowTagInput(false); setNewTag(""); }} className="ui-button h-8 px-2.5 text-[12px]">
                       ×
                     </button>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => setShowTagInput(true)} className="v2-link text-[12px] text-ink-2 no-underline hover:text-ink">
+                  <button type="button" onClick={() => setShowTagInput(true)} className="ui-link text-[12px] text-ink-2 no-underline hover:text-ink">
                     {text.addTag}
                   </button>
                 )}
@@ -322,7 +321,7 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
                           key={preset}
                           onClick={() => addTag(preset)}
                           disabled={tagSaving}
-                          className="v2-button h-7 px-2 text-[12px]"
+                          className="ui-button h-7 px-2 text-[12px]"
                         >
                           {preset}
                         </button>
@@ -336,7 +335,7 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
               <div className="flex items-center justify-between text-[12px]">
                 <span className="text-ink-3">{text.notes}</span>
                 {notes && !editingNotes && (
-                  <button type="button" aria-label={text.editNotes} onClick={() => { setEditingNotes(true); setNotesDraft(notes); }} className="v2-link text-ink-3 no-underline hover:text-ink-2">
+                  <button type="button" aria-label={text.editNotes} onClick={() => { setEditingNotes(true); setNotesDraft(notes); }} className="ui-link text-ink-3 no-underline hover:text-ink-2">
                     <IconPencil />
                   </button>
                 )}
@@ -349,7 +348,7 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
                     {notes}
                   </p>
                 ) : (
-                  <button type="button" onClick={() => { setEditingNotes(true); setNotesDraft(""); }} className="v2-link text-[12px] text-ink-2 no-underline hover:text-ink">
+                  <button type="button" onClick={() => { setEditingNotes(true); setNotesDraft(""); }} className="ui-link text-[12px] text-ink-2 no-underline hover:text-ink">
                     {text.addNote}
                   </button>
                 )}
@@ -376,17 +375,17 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
             <tbody>
               <tr className="border-b border-line">
                 <td className="py-2 text-profit">{text.open}</td>
-                <td className="v2-num py-2 text-right text-ink">${trade.entryPrice.toFixed(4)}</td>
-                <td className="v2-num py-2 text-right">--</td>
-                <td className="v2-num py-2 text-right">--</td>
-                <td className="v2-num py-2 text-right text-ink-2">{entryDateTime.full}</td>
+                <td className="ui-num py-2 text-right text-ink">${trade.entryPrice.toFixed(4)}</td>
+                <td className="ui-num py-2 text-right">--</td>
+                <td className="ui-num py-2 text-right">--</td>
+                <td className="ui-num py-2 text-right text-ink-2">{entryDateTime.full}</td>
               </tr>
               <tr>
                 <td className="py-2 text-loss">{text.close}</td>
-                <td className="v2-num py-2 text-right text-ink">${trade.exitPrice.toFixed(4)}</td>
-                <td className="v2-num py-2 text-right">--</td>
-                <td className="v2-num py-2 text-right">--</td>
-                <td className="v2-num py-2 text-right text-ink-2">{exitDateTime.full}</td>
+                <td className="ui-num py-2 text-right text-ink">${trade.exitPrice.toFixed(4)}</td>
+                <td className="ui-num py-2 text-right">--</td>
+                <td className="ui-num py-2 text-right">--</td>
+                <td className="ui-num py-2 text-right text-ink-2">{exitDateTime.full}</td>
               </tr>
             </tbody>
           </table>
@@ -403,7 +402,7 @@ export function TradeDetailV2({ trade, onTradeUpdated, onDirtyChange }: {
                 {notes}
               </p>
             ) : (
-              <button type="button" onClick={() => { setEditingNotes(true); setNotesDraft(""); }} className="v2-link text-[13px] text-ink-2 no-underline hover:text-ink">
+              <button type="button" onClick={() => { setEditingNotes(true); setNotesDraft(""); }} className="ui-link text-[13px] text-ink-2 no-underline hover:text-ink">
                 {text.addNotePlain}
               </button>
             )}

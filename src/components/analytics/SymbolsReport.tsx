@@ -5,9 +5,12 @@ import Link from "next/link";
 import { buildTradeHistoryHref, type TradeHistoryScope } from "@/lib/dashboard/trade-history-routing";
 import type { SymbolReport } from "@/lib/dashboard/analytics-transforms";
 import { useI18n } from "@/components/i18n/LanguageProvider";
+import { formatMoney } from "@/lib/formatters";
 import type { Locale } from "@/lib/i18n";
+import { EmptyState, Panel, PanelHeader } from "@/components/ui/Panel";
+import { SplitBar } from "@/components/ui/Bars";
 
-function formatDuration(seconds: number, locale: Locale): string {
+function formatHoldDuration(seconds: number, locale: Locale): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   if (locale === "zh") return `${h}小时 ${m}分`;
@@ -23,79 +26,58 @@ export function SymbolsReport({ data, scope }: { data: SymbolReport[]; scope?: T
   const totalPages = Math.ceil(data.length / PAGE_SIZE);
   const safePage = Math.min(Math.max(currentPage, 1), Math.max(totalPages, 1));
   const startIndex = (safePage - 1) * PAGE_SIZE;
-  const pageRows = useMemo(() => {
-    return data.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [data, startIndex]);
+  const pageRows = useMemo(() => data.slice(startIndex, startIndex + PAGE_SIZE), [data, startIndex]);
+  const th = "px-3 py-2 text-[12px] font-normal text-ink-3";
+  const td = "ui-num px-3 py-2 text-[13px]";
 
   return (
-    <div className="trading-panel overflow-hidden">
-      <div className="px-5 py-4">
-        <h3 className="terminal-section-title">{dictionary.analytics.reports.symbolsTitle}</h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+    <Panel className="overflow-hidden">
+      <PanelHeader size="sm" title={dictionary.analytics.reports.symbolsTitle} />
+      {data.length === 0 && <EmptyState>{dictionary.overview.symbolTop10.empty}</EmptyState>}
+      {data.length > 0 && <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px]">
           <thead>
-            <tr className="border-b border-border bg-bg-tertiary/42">
-              <th className="px-4 py-2 text-left text-xs text-text-muted">{text.symbol}</th>
-              <th className="px-4 py-2 text-center text-xs text-text-muted">{text.tradeCount}</th>
-              <th className="px-4 py-2 text-center text-xs text-text-muted">{text.winRate}</th>
-              <th className="px-4 py-2 text-center text-xs text-text-muted">{text.longVsShort}</th>
-              <th className="px-4 py-2 text-center text-xs text-text-muted">{text.avgDuration}</th>
-              <th className="px-4 py-2 text-right text-xs text-text-muted">{text.avgGain}</th>
-              <th className="px-4 py-2 text-right text-xs text-text-muted">{text.totalGain}</th>
+            <tr>
+              <th className={`${th} pl-4 text-left`}>{text.symbol}</th>
+              <th className={`${th} text-right`}>{text.tradeCount}</th>
+              <th className={`${th} text-right`}>{text.winRate}</th>
+              <th className={`${th} text-left`}>{text.longVsShort}</th>
+              <th className={`${th} text-right`}>{text.avgDuration}</th>
+              <th className={`${th} text-right`}>{text.avgGain}</th>
+              <th className={`${th} pr-4 text-right`}>{text.totalGain}</th>
             </tr>
           </thead>
           <tbody>
             {pageRows.map((row) => (
-              <tr key={row.symbol} className="border-b border-border-light transition-colors hover:bg-bg-hover/52">
-                <td className="px-4 py-3 font-mono text-text-primary text-xs"><Link href={buildTradeHistoryHref({ ...scope, symbol: row.symbol })} className="rounded underline decoration-border underline-offset-4 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60">{row.symbol}</Link></td>
-                <td className="px-4 py-3 text-center font-mono text-text-primary text-xs">{row.tradeCount}</td>
-                <td className="px-4 py-3 text-center font-mono text-text-primary text-xs">{row.winRate.toFixed(0)}%</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1 justify-center">
-                    <div className="flex h-3 w-24 rounded overflow-hidden">
-                      <div className="bg-green" style={{ width: `${row.longPercent}%` }} />
-                      <div className="bg-red" style={{ width: `${row.shortPercent}%` }} />
-                    </div>
-                    <span className="text-[9px] text-text-muted">
-                      {row.longPercent.toFixed(0)}%
-                    </span>
-                    <span className="text-[9px] text-red">
-                      {row.shortPercent.toFixed(0)}%
-                    </span>
+              <tr key={row.symbol} className="ui-row">
+                <td className="px-3 py-2 pl-4 text-[13px]">
+                  <Link href={buildTradeHistoryHref({ ...scope, symbol: row.symbol })} className="ui-link font-medium">{row.symbol}</Link>
+                </td>
+                <td className={`${td} text-right text-ink`}>{row.tradeCount}</td>
+                <td className={`${td} text-right text-ink`}>{row.winRate.toFixed(0)}%</td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-24"><SplitBar a={row.longPercent} b={row.shortPercent} height={4} /></div>
+                    <span className="ui-num text-[11px] text-ink-3">{row.longPercent.toFixed(0)}% / {row.shortPercent.toFixed(0)}%</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`inline-block px-3 py-1.5 rounded-full text-sm font-mono font-medium ${
-                    row.avgDuration > 14400 ? "bg-green/20 text-green" : row.avgDuration > 3600 ? "bg-yellow/20 text-yellow" : "bg-red/20 text-red"
-                  }`}>
-                    {formatDuration(row.avgDuration, locale)}
-                  </span>
+                <td className={`${td} text-right text-ink-2`}>{formatHoldDuration(row.avgDuration, locale)}</td>
+                <td className={`${td} text-right ${row.avgGain >= 0 ? "text-profit" : "text-loss"}`}>
+                  {formatMoney(row.avgGain)}
                 </td>
-                <td className={`px-4 py-3 text-right font-mono text-xs ${row.avgGain >= 0 ? "text-green" : "text-red"}`}>
-                  {row.avgGain >= 0 ? "+" : ""}${row.avgGain.toFixed(2)}
-                </td>
-                <td className={`px-4 py-3 text-right font-mono text-xs ${row.totalGain >= 0 ? "text-green" : "text-red"}`}>
-                  {row.totalGain >= 0 ? "+" : ""}${row.totalGain.toFixed(2)}
+                <td className={`${td} pr-4 text-right font-medium ${row.totalGain >= 0 ? "text-profit" : "text-loss"}`}>
+                  {formatMoney(row.totalGain)}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-border px-5 py-3">
-          <span className="text-xs text-text-muted">
-            {startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, data.length)} / {data.length}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-2">
+          <span className="ui-num text-[12px] text-ink-3">{startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, data.length)} / {data.length}</span>
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              aria-label={text.previousAria}
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              disabled={safePage === 1}
-              className="rounded border border-border px-2 py-1 text-xs text-text-secondary transition-colors hover:border-text-muted hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:cursor-not-allowed disabled:opacity-30"
-            >
+            <button type="button" aria-label={text.previousAria} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safePage === 1} className="ui-button h-7 text-[12px]">
               {text.previous}
             </button>
             {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
@@ -105,27 +87,17 @@ export function SymbolsReport({ data, scope }: { data: SymbolReport[]; scope?: T
                 aria-label={`${text.pageAria} ${page}`}
                 aria-current={safePage === page ? "page" : undefined}
                 onClick={() => setCurrentPage(page)}
-                className={`rounded px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 ${
-                  safePage === page
-                    ? "bg-yellow text-bg-primary font-semibold"
-                    : "border border-border text-text-secondary hover:border-text-muted hover:text-text-primary"
-                }`}
+                className={`ui-button ui-num h-7 min-w-7 justify-center px-2 text-[12px] ${safePage === page ? "border-line-strong bg-surface-3 text-ink" : "border-transparent"}`}
               >
                 {page}
               </button>
             ))}
-            <button
-              type="button"
-              aria-label={text.nextAria}
-              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-              disabled={safePage === totalPages}
-              className="rounded border border-border px-2 py-1 text-xs text-text-secondary transition-colors hover:border-text-muted hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:cursor-not-allowed disabled:opacity-30"
-            >
+            <button type="button" aria-label={text.nextAria} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safePage === totalPages} className="ui-button h-7 text-[12px]">
               {text.next}
             </button>
           </div>
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

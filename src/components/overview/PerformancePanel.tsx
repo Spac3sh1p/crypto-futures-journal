@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { template } from "@/lib/i18n";
 import type { CurvePoint } from "@/lib/dashboard/overview-model";
-import { Panel } from "@/components/v2/ui/Panel";
-import { Segmented } from "@/components/v2/ui/Segmented";
-import { EquityChartV2 } from "./EquityChartV2";
+import { Panel } from "@/components/ui/Panel";
+import { Segmented } from "@/components/ui/Segmented";
+import { EquityChart } from "./EquityChart";
 
 export interface OverviewStat {
   label: string;
@@ -14,7 +14,7 @@ export interface OverviewStat {
   sub?: string;
 }
 
-export function PerformancePanelV2({
+export function PerformancePanel({
   headlineLabel,
   headlineValue,
   headlineTone,
@@ -51,13 +51,13 @@ export function PerformancePanelV2({
       <div className="flex flex-wrap items-start justify-between gap-4 px-5 pt-5">
         <div>
           <div className="text-[13px] text-ink-3">{headlineLabel}</div>
-          <div className={`v2-figure mt-1 text-[36px] leading-none ${headlineTone === "profit" ? "text-profit" : "text-loss"}`}>
+          <div className={`ui-figure mt-1 text-[36px] leading-none ${headlineTone === "profit" ? "text-profit" : "text-loss"}`}>
             {headlineValue}
           </div>
         </div>
         <div className="text-right">
           <div className="text-[12px] text-ink-3">{balanceLabel}</div>
-          <div className="v2-num mt-1 text-[15px] text-ink">{balanceValue}</div>
+          <div className="ui-num mt-1 text-[15px] text-ink">{balanceValue}</div>
         </div>
       </div>
 
@@ -74,7 +74,7 @@ export function PerformancePanelV2({
       </div>
 
       <div className="overflow-x-auto px-1">
-        <EquityChartV2
+        <EquityChart
           data={mode === "trades" ? trades : flows}
           seriesName={mode === "trades" ? text.closedCurve : text.accountCurve}
           emptyText={dictionary.performance.cumulative.empty}
@@ -83,7 +83,7 @@ export function PerformancePanelV2({
 
       {mode === "flows" && (
         <p className="px-5 pb-3 text-[12px] text-ink-3" title={text.sharpeHint}>
-          {text.accountSharpe}: <span className="v2-num text-ink-2">{sharpe === null ? "--" : sharpe.toFixed(2)}</span>
+          {text.accountSharpe}: <span className="ui-num text-ink-2">{sharpe === null ? "--" : sharpe.toFixed(2)}</span>
         </p>
       )}
 
@@ -91,7 +91,7 @@ export function PerformancePanelV2({
         {stats.map((stat, index) => (
           <div key={stat.label} className={`px-5 py-4 ${index > 0 ? "lg:border-l lg:border-line" : ""} ${index % 2 === 1 ? "border-l border-line lg:border-l" : ""}`}>
             <div className="text-[12px] text-ink-3">{stat.label}</div>
-            <div className="v2-figure mt-1 text-[20px] leading-7 text-ink">{stat.value}</div>
+            <div className="ui-figure mt-1 text-[20px] leading-7 text-ink">{stat.value}</div>
             {stat.sub && <div className="mt-0.5 text-[12px] text-ink-3">{stat.sub}</div>}
           </div>
         ))}

@@ -10,7 +10,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-bg-primary px-4">
+    <main className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <LoginForm configured={isAuthConfigured()} />
     </main>
   );

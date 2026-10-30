@@ -1,47 +1,19 @@
-import { normalizeDashboardParams } from "@/lib/dashboard/trade-history-routing";
-import { AccountingNotice } from "@/components/dashboard/AccountingNotice";
-import { filterTradesForHistory, normalizeTradeFilters, type TradeHistoryScope } from "@/lib/dashboard/trade-history-routing";
-import { TradeNavigationLink as Link } from "@/components/dashboard/TradeNavigationGuard";
+import {
+  filterTradesForHistory,
+  normalizeDashboardParams,
+  normalizeTradeFilters,
+  type TradeHistoryScope,
+} from "@/lib/dashboard/trade-history-routing";
 import { parseRange } from "@/lib/formatters";
 import { getTradesInRange } from "@/lib/dashboard/queries";
 import { getServerDictionary } from "@/lib/i18n-server";
+import { serializeTrade } from "@/lib/dashboard/overview-model";
+import { AccountingNotice } from "@/components/dashboard/AccountingNotice";
 import { OverviewDashboard } from "@/components/overview/OverviewDashboard";
-import { TradeHistoryTable, type SerializedTrade } from "@/components/dashboard/TradeHistoryTable";
+import { TradeHistoryTable } from "@/components/trades/TradeHistoryTable";
 
 interface PageProps {
   searchParams: Promise<TradeHistoryScope & { view?: string }>;
-}
-
-function serializeTrade(trade: Awaited<ReturnType<typeof getTradesInRange>>[number]): SerializedTrade {
-  return {
-    id: trade.id,
-    accountingStatus: trade.accountingStatus,
-    exchangeName: trade.exchange.name,
-    symbol: trade.symbol,
-    side: trade.side,
-    leverage: trade.leverage,
-    entryPrice: trade.entryPrice,
-    exitPrice: trade.exitPrice,
-    realizedPnl: trade.realizedPnl,
-    fee: trade.fee,
-    fundingFee: trade.fundingFee,
-    holdDuration: trade.holdDuration,
-    entryTime: trade.entryTime.toISOString(),
-    exitTime: trade.exitTime.toISOString(),
-    tags: trade.tags,
-    notes: trade.notes,
-    entryQty: trade.entryQty,
-    entryValue: trade.entryValue,
-  };
-}
-
-function buildHref(params: { range?: string; exchangeId?: string }, view?: string): string {
-  const search = new URLSearchParams();
-  if (params.range) search.set("range", params.range);
-  if (params.exchangeId) search.set("exchangeId", params.exchangeId);
-  if (view) search.set("view", view);
-  const query = search.toString();
-  return query ? `/dashboard/performance?${query}` : "/dashboard/performance";
 }
 
 export default async function PerformancePage({ searchParams }: PageProps) {
@@ -54,7 +26,6 @@ export default async function PerformancePage({ searchParams }: PageProps) {
   const range = parseRange(params.range);
   const exchangeId = params.exchangeId;
   const dictionary = await getServerDictionary();
-  const overview = dictionary.overview;
   const candidates = await getTradesInRange(range, exchangeId);
   const scope = { ...normalizeTradeFilters(params), range, exchangeId, tradeId: params.tradeId, page: params.page };
   const trades = filterTradesForHistory(candidates, scope);
@@ -63,29 +34,6 @@ export default async function PerformancePage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-4">
-      <section className="trading-panel p-4 lg:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <nav className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-bg-tertiary/80 p-1" aria-label={overview.heroTitle}>
-            <Link className="rounded-md px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-bg-hover hover:text-text-primary" href={buildHref(params)}>
-              {overview.secondaryNav.overview}
-            </Link>
-            <span className="rounded-md bg-yellow px-3 py-1.5 text-xs font-semibold text-[#08111D]">
-              {overview.secondaryNav.trades}
-            </span>
-            <Link className="rounded-md px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-bg-hover hover:text-text-primary" href={buildHref(params).replace("/dashboard/performance", "/dashboard/analytics")}>
-              {overview.secondaryNav.analytics}
-            </Link>
-          </nav>
-          <Link
-            href={buildHref(params)}
-            className="rounded-lg border border-border bg-bg-tertiary/90 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:border-yellow/40 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
-          >
-            {overview.secondaryNav.overview}
-          </Link>
-        </div>
-      </section>
-
-      <AccountingNotice trades={trades} text={dictionary.accounting} />
       <TradeHistoryTable
         key={JSON.stringify(scope)}
         trades={trades.map(serializeTrade)}
@@ -94,6 +42,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
         symbols={symbols}
         tags={tags}
       />
+      <AccountingNotice trades={trades} text={dictionary.accounting} />
     </div>
   );
 }

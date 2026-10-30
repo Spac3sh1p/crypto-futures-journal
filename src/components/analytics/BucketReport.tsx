@@ -2,9 +2,9 @@
 
 import type { DurationSizeBucket } from "@/lib/dashboard/analytics-transforms";
 import { useI18n } from "@/components/i18n/LanguageProvider";
-import { Panel, PanelHeader } from "@/components/v2/ui/Panel";
+import { Panel, PanelHeader } from "@/components/ui/Panel";
 
-export function BucketReportV2({
+export function BucketReport({
   title,
   subtitle,
   data,
@@ -41,7 +41,7 @@ export function BucketReportV2({
                 {winWidth > 0 && <div className="rounded-r-sm bg-profit" style={{ width: `${winWidth}%` }} />}
                 {lossWidth > 0 && <div className="rounded-r-sm bg-loss" style={{ width: `${lossWidth}%` }} />}
               </div>
-              <span className="v2-num w-8 shrink-0 text-right text-[11px] text-ink-2">{total}</span>
+              <span className="ui-num w-8 shrink-0 text-right text-[11px] text-ink-2">{total}</span>
             </div>
           );
         })}

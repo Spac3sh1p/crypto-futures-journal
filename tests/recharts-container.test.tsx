@@ -1,32 +1,19 @@
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { OverviewCurveChart } from "@/components/overview/OverviewCurveChart";
-
-vi.mock("@/components/i18n/LanguageProvider", () => ({
-  useI18n: () => ({
-    dictionary: {
-      overview: {
-        mainCurve: "Cumulative PnL",
-      },
-      performance: {
-        cumulative: {
-          empty: "No data",
-        },
-      },
-    },
-  }),
-}));
+import { EquityChart } from "@/components/overview/EquityChart";
 
 describe("Recharts containers", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("does not emit the Recharts -1 size warning during OverviewCurveChart SSR", () => {
+  it("does not emit the Recharts -1 size warning during EquityChart SSR", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     renderToString(
-      <OverviewCurveChart
+      <EquityChart
+        seriesName="Cumulative PnL"
+        emptyText="No data"
         data={[
           { date: "2026-06-01", value: 12.5 },
           { date: "2026-06-02", value: 24.75 },

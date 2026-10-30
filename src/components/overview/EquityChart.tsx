@@ -16,7 +16,7 @@ import { buildNiceScale } from "@/lib/dashboard/chart-ticks";
 import type { CurvePoint } from "@/lib/dashboard/overview-model";
 
 const CHART_HEIGHT = 272;
-const AXIS_FONT = "var(--v2-font-sans)";
+const AXIS_FONT = "var(--ui-font-sans)";
 
 function formatAxisDate(date: string): string {
   const [, month, day] = date.split("-");
@@ -57,15 +57,15 @@ function ChartTooltip({
 }) {
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
-  const tone = point.value >= 0 ? "var(--v2-profit)" : "var(--v2-loss)";
+  const tone = point.value >= 0 ? "var(--ui-profit)" : "var(--ui-loss)";
   return (
     <div className="rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-[12px] text-ink-3">
-      <div className="v2-num">{String(label)}</div>
+      <div className="ui-num">{String(label)}</div>
       <div className="mt-1 flex items-center gap-2">
         <span className="inline-block h-0.5 w-3 rounded-full" style={{ background: tone }} aria-hidden="true" />
-        <span className="v2-num text-[13px] font-medium text-ink">{formatMoneyValue(point.value)}</span>
+        <span className="ui-num text-[13px] font-medium text-ink">{formatMoneyValue(point.value)}</span>
         {typeof point.returnPct === "number" && (
-          <span className="v2-num text-ink-2">{formatPercent(point.returnPct, true)}</span>
+          <span className="ui-num text-ink-2">{formatPercent(point.returnPct, true)}</span>
         )}
         <span>{seriesName}</span>
       </div>
@@ -73,7 +73,7 @@ function ChartTooltip({
   );
 }
 
-export function EquityChartV2({
+export function EquityChart({
   data,
   seriesName,
   emptyText,
@@ -115,22 +115,22 @@ export function EquityChartV2({
         <AreaChart data={data} margin={{ top: 16, right: hasReturnPct ? 4 : 20, left: 4, bottom: 4 }}>
           <defs>
             <linearGradient id="v2EquityStroke" x1="0" y1="0" x2="0" y2="1">
-              <stop offset={0} stopColor="var(--v2-profit)" />
-              <stop offset={zeroOffset} stopColor="var(--v2-profit)" />
-              <stop offset={zeroOffset} stopColor="var(--v2-loss)" />
-              <stop offset={1} stopColor="var(--v2-loss)" />
+              <stop offset={0} stopColor="var(--ui-profit)" />
+              <stop offset={zeroOffset} stopColor="var(--ui-profit)" />
+              <stop offset={zeroOffset} stopColor="var(--ui-loss)" />
+              <stop offset={1} stopColor="var(--ui-loss)" />
             </linearGradient>
             <linearGradient id="v2EquityFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset={0} stopColor="var(--v2-profit)" stopOpacity={0.14} />
-              <stop offset={zeroOffset} stopColor="var(--v2-profit)" stopOpacity={0.02} />
-              <stop offset={zeroOffset} stopColor="var(--v2-loss)" stopOpacity={0.02} />
-              <stop offset={1} stopColor="var(--v2-loss)" stopOpacity={0.14} />
+              <stop offset={0} stopColor="var(--ui-profit)" stopOpacity={0.14} />
+              <stop offset={zeroOffset} stopColor="var(--ui-profit)" stopOpacity={0.02} />
+              <stop offset={zeroOffset} stopColor="var(--ui-loss)" stopOpacity={0.02} />
+              <stop offset={1} stopColor="var(--ui-loss)" stopOpacity={0.14} />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} stroke="var(--v2-line)" />
+          <CartesianGrid vertical={false} stroke="var(--ui-line)" />
           <XAxis
             dataKey="date"
-            tick={{ fill: "var(--v2-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
+            tick={{ fill: "var(--ui-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
             axisLine={false}
             tickLine={false}
             tickFormatter={formatAxisDate}
@@ -141,7 +141,7 @@ export function EquityChartV2({
             yAxisId="left"
             domain={moneyScale.domain}
             ticks={moneyScale.ticks}
-            tick={{ fill: "var(--v2-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
+            tick={{ fill: "var(--ui-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
             axisLine={false}
             tickLine={false}
             width={60}
@@ -154,16 +154,16 @@ export function EquityChartV2({
               dataKey="returnPct"
               domain={returnScale.domain}
               ticks={returnScale.ticks}
-              tick={{ fill: "var(--v2-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
+              tick={{ fill: "var(--ui-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
               axisLine={false}
               tickLine={false}
               width={56}
               tickFormatter={(value) => formatPercent(Number(value))}
             />
           )}
-          <ReferenceLine yAxisId="left" y={0} stroke="var(--v2-line-strong)" />
+          <ReferenceLine yAxisId="left" y={0} stroke="var(--ui-line-strong)" />
           <Tooltip
-            cursor={{ stroke: "var(--v2-line-strong)", strokeWidth: 1 }}
+            cursor={{ stroke: "var(--ui-line-strong)", strokeWidth: 1 }}
             content={<ChartTooltip seriesName={seriesName} />}
           />
           <Area
@@ -174,7 +174,7 @@ export function EquityChartV2({
             fill="url(#v2EquityFill)"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--v2-surface)", fill: "var(--v2-ink)" }}
+            activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--ui-surface)", fill: "var(--ui-ink)" }}
             isAnimationActive={false}
           />
           {last && (
@@ -183,8 +183,8 @@ export function EquityChartV2({
               x={last.date}
               y={last.value}
               r={4}
-              fill={last.value >= 0 ? "var(--v2-profit)" : "var(--v2-loss)"}
-              stroke="var(--v2-surface)"
+              fill={last.value >= 0 ? "var(--ui-profit)" : "var(--ui-loss)"}
+              stroke="var(--ui-surface)"
               strokeWidth={2}
               ifOverflow="visible"
             />

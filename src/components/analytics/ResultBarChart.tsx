@@ -17,7 +17,7 @@ import {
 import type { DayTimeBar } from "@/lib/dashboard/analytics-transforms";
 import { buildNiceScale } from "@/lib/dashboard/chart-ticks";
 import { useI18n } from "@/components/i18n/LanguageProvider";
-import { Panel, PanelHeader } from "@/components/v2/ui/Panel";
+import { Panel, PanelHeader } from "@/components/ui/Panel";
 
 const CHART_HEIGHT = 200;
 
@@ -30,7 +30,7 @@ interface BarShapeProps {
   fill?: string;
   payload?: { pnl?: number };
 }
-const AXIS_FONT = "var(--v2-font-sans)";
+const AXIS_FONT = "var(--ui-font-sans)";
 
 function formatMoneyTick(value: number): string {
   const abs = Math.abs(value);
@@ -47,13 +47,13 @@ function BarTooltip({ active, payload, label, seriesName }: {
 }) {
   const value = Number(payload?.[0]?.value);
   if (!active || !Number.isFinite(value)) return null;
-  const tone = value >= 0 ? "var(--v2-profit)" : "var(--v2-loss)";
+  const tone = value >= 0 ? "var(--ui-profit)" : "var(--ui-loss)";
   return (
     <div className="rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-[12px] text-ink-3">
-      <div className="v2-num">{payload?.[0]?.payload?.tooltipLabel ?? String(label)}</div>
+      <div className="ui-num">{payload?.[0]?.payload?.tooltipLabel ?? String(label)}</div>
       <div className="mt-1 flex items-center gap-2">
         <span className="inline-block h-2 w-2 rounded-sm" style={{ background: tone }} aria-hidden="true" />
-        <span className="v2-num text-[13px] font-medium text-ink">{value >= 0 ? "+" : "-"}${Math.abs(value).toFixed(2)}</span>
+        <span className="ui-num text-[13px] font-medium text-ink">{value >= 0 ? "+" : "-"}${Math.abs(value).toFixed(2)}</span>
         <span>{seriesName}</span>
       </div>
     </div>
@@ -69,7 +69,7 @@ export interface ResultBarItem extends DayTimeBar {
   href: string;
 }
 
-export function ResultBarChartV2({
+export function ResultBarChart({
   title,
   hint,
   data,
@@ -88,10 +88,10 @@ export function ResultBarChartV2({
       <div className="px-2 pt-3">
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
           <BarChart data={chartData} margin={{ top: 8, right: 16, left: 4, bottom: 0 }} barCategoryGap="35%">
-            <CartesianGrid vertical={false} stroke="var(--v2-line)" />
+            <CartesianGrid vertical={false} stroke="var(--ui-line)" />
             <XAxis
               dataKey="display"
-              tick={{ fill: "var(--v2-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
+              tick={{ fill: "var(--ui-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
               axisLine={false}
               tickLine={false}
               interval={chartData.length > 8 ? "equidistantPreserveStart" : 0}
@@ -101,14 +101,14 @@ export function ResultBarChartV2({
             <YAxis
               domain={scale.domain}
               ticks={scale.ticks}
-              tick={{ fill: "var(--v2-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
+              tick={{ fill: "var(--ui-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
               axisLine={false}
               tickLine={false}
               width={56}
               tickFormatter={formatMoneyTick}
             />
-            <ReferenceLine y={0} stroke="var(--v2-line-strong)" />
-            <Tooltip cursor={{ fill: "var(--v2-surface-2)" }} content={<BarTooltip seriesName={dictionary.common.pnl} />} />
+            <ReferenceLine y={0} stroke="var(--ui-line-strong)" />
+            <Tooltip cursor={{ fill: "var(--ui-surface-2)" }} content={<BarTooltip seriesName={dictionary.common.pnl} />} />
             <Bar
               dataKey="pnl"
               maxBarSize={24}
@@ -118,7 +118,7 @@ export function ResultBarChartV2({
               )}
             >
               {chartData.map((entry) => (
-                <Cell key={entry.label} fill={entry.pnl >= 0 ? "var(--v2-profit)" : "var(--v2-loss)"} />
+                <Cell key={entry.label} fill={entry.pnl >= 0 ? "var(--ui-profit)" : "var(--ui-loss)"} />
               ))}
             </Bar>
           </BarChart>
@@ -127,7 +127,7 @@ export function ResultBarChartV2({
       <nav aria-label={title} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line px-4 py-2 text-[12px]">
         <span className="text-ink-3">{dictionary.tradeFilters.drillDown}</span>
         {chartData.map((item) => (
-          <Link key={item.label} href={item.href} className="v2-link v2-num text-ink-2 hover:text-ink">
+          <Link key={item.label} href={item.href} className="ui-link ui-num text-ink-2 hover:text-ink">
             {item.display}
           </Link>
         ))}

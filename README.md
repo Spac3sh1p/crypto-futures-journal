@@ -36,14 +36,16 @@ src/
   app/
     api/                  Server routes for auth, exchanges, sync, trades, and market data
     dashboard/            Maintained dashboard pages
-    globals.css           Trading terminal theme
+    globals.css           Theme tokens, fonts and shared UI classes
   components/
     analytics/            Analytics panels and reports
     calendar/             Monthly review UI
-    dashboard/            Shared dashboard shell and trade detail components
+    dashboard/            Shell (sidebar, top bar), accounting notice, mini kline chart
     i18n/                 Locale provider and toggle
-    overview/             Main performance overview
+    overview/             Performance overview, equity chart, recent trades
     settings/             Exchange connection UI
+    trades/               Trade history table, rows and detail panel
+    ui/                   Panel, segmented control and bar primitives
   lib/
     analysis/             Metrics engine
     dashboard/            Dashboard queries and transforms
