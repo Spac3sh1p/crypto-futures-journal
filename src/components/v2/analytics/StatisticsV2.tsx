@@ -33,6 +33,8 @@ export function StatisticsV2({ stats }: { stats: Statistics }) {
   const { dictionary } = useI18n();
   const text = dictionary.analytics.statistics;
   const days = template(text.days, { days: stats.tradingDays });
+  const empty = stats.tradingDays === 0;
+  const blank = (rows: Row[]): Row[] => (empty ? rows.map((row) => ({ label: row.label, value: "--" })) : rows);
   const left: Row[] = [
     { label: text.totalGainLoss, value: formatMoney(stats.totalGainLoss), tone: stats.totalGainLoss >= 0 ? "profit" : "loss" },
     { label: text.avgDailyGain, value: `${formatMoney(stats.avgDailyGain)} (${days})`, tone: stats.avgDailyGain >= 0 ? "profit" : "loss" },
@@ -52,8 +54,8 @@ export function StatisticsV2({ stats }: { stats: Statistics }) {
     <Panel>
       <PanelHeader title={text.title} />
       <div className="grid grid-cols-1 gap-x-12 px-5 py-2 lg:grid-cols-2">
-        <RowList rows={left} />
-        <RowList rows={right} />
+        <RowList rows={blank(left)} />
+        <RowList rows={blank(right)} />
       </div>
     </Panel>
   );

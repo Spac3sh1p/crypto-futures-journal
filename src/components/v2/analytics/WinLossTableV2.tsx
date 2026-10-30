@@ -39,10 +39,10 @@ export function WinLossTableV2({ title, rows, isWin }: { title: string; rows: Wi
                   {row.type === "Long" ? dictionary.common.long : row.type === "Short" ? dictionary.common.short : dictionary.common.both}
                 </td>
                 <td className={`${td} text-right text-ink`}>{row.count}</td>
-                <td className={`${td} text-right text-ink-2`}>{formatDuration(row.avgDuration, locale)}</td>
-                <td className={`${td} text-right text-ink-2`}>${row.avgSize.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                <td className={`${td} text-right font-medium ${isWin ? "text-profit" : "text-loss"}`}>
-                  {isWin ? "+" : "-"}${Math.abs(row.avgGainLoss).toFixed(2)}
+                <td className={`${td} text-right text-ink-2`}>{row.count === 0 ? "--" : formatDuration(row.avgDuration, locale)}</td>
+                <td className={`${td} text-right text-ink-2`}>{row.count === 0 ? "--" : `$${row.avgSize.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}</td>
+                <td className={`${td} text-right font-medium ${row.count === 0 ? "text-ink-3" : isWin ? "text-profit" : "text-loss"}`}>
+                  {row.count === 0 ? "--" : `${isWin ? "+" : "-"}$${Math.abs(row.avgGainLoss).toFixed(2)}`}
                 </td>
               </tr>
             ))}

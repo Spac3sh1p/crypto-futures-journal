@@ -7,7 +7,7 @@ import { toPreviewHref } from "@/lib/dashboard/preview-routing";
 import type { SymbolReport } from "@/lib/dashboard/analytics-transforms";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import type { Locale } from "@/lib/i18n";
-import { Panel, PanelHeader } from "@/components/v2/ui/Panel";
+import { EmptyState, Panel, PanelHeader } from "@/components/v2/ui/Panel";
 import { SplitBar } from "@/components/v2/ui/Bars";
 
 function formatHoldDuration(seconds: number, locale: Locale): string {
@@ -33,7 +33,8 @@ export function SymbolsReportV2({ data, scope }: { data: SymbolReport[]; scope?:
   return (
     <Panel className="overflow-hidden">
       <PanelHeader title={dictionary.analytics.reports.symbolsTitle} />
-      <div className="overflow-x-auto">
+      {data.length === 0 && <EmptyState>{dictionary.overview.symbolTop10.empty}</EmptyState>}
+      {data.length > 0 && <div className="overflow-x-auto">
         <table className="w-full min-w-[760px]">
           <thead>
             <tr>
@@ -71,7 +72,7 @@ export function SymbolsReportV2({ data, scope }: { data: SymbolReport[]; scope?:
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
       {totalPages > 1 && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
           <span className="v2-num text-[12px] text-ink-3">{startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, data.length)} / {data.length}</span>
