@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import type { AccountingStatus } from "@/lib/dashboard/trade-accounting";
 import { TradeDetailPanel } from "./TradeDetailPanel";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { template } from "@/lib/i18n";
@@ -13,12 +15,15 @@ import {
   sanitizeCsvField,
 } from "@/lib/formatters";
 import {
+  buildTradeHistoryHref,
+  type TradeHistoryScope,
   getInitialTradeHistoryPage,
   TRADE_HISTORY_PAGE_SIZE,
 } from "@/lib/dashboard/trade-history-routing";
 
 export interface SerializedTrade {
   id: string;
+  accountingStatus?: AccountingStatus;
   exchangeName: string;
   symbol: string;
   side: string;
@@ -91,30 +96,62 @@ function DurationCell({ seconds, locale }: { seconds: number; locale: "zh" | "en
 }
 
 export function TradeHistoryTable({
-  trades,
+  trades: initialTrades,
   focusedTradeId,
+  scope = {},
+  symbols = [],
+  tags = [],
 }: {
   trades: SerializedTrade[];
   focusedTradeId?: string;
+  scope?: TradeHistoryScope;
+  symbols?: string[];
+  tags?: string[];
 }) {
   const { dictionary, locale } = useI18n();
   const text = dictionary.tradeHistory;
   const fundingFeeLabel = locale === "zh" ? "资金费率" : "Funding";
   const returnLabel = locale === "zh" ? "盈亏率" : "Return";
-  const [currentPage, setCurrentPage] = useState(() =>
-    getInitialTradeHistoryPage(trades.map((trade) => trade.id), focusedTradeId, PAGE_SIZE)
-  );
-  const [expandedId, setExpandedId] = useState<string | null>(() =>
-    focusedTradeId && trades.some((trade) => trade.id === focusedTradeId) ? focusedTradeId : null
-  );
-
-  const totalPages = Math.ceil(trades.length / PAGE_SIZE);
+  const filters = dictionary.tradeFilters;
+  const router = useRouter();
+  const [updates, setUpdates] = useState<Record<string, Partial<SerializedTrade>>>({});
+  const trades = initialTrades.map((trade) => ({ ...trade, ...updates[trade.id] }));
+  const [dirty, setDirty] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const focusedIndex = trades.findIndex((trade) => trade.id === focusedTradeId);
+  const [expandedId, setExpandedId] = useState<string | null>(focusedIndex >= 0 ? focusedTradeId! : null);
+  const totalPages = Math.max(1, Math.ceil(trades.length / PAGE_SIZE));
+  const requestedPage = scope.page && /^[1-9]\d*$/.test(scope.page) ? Number(scope.page) : 1;
+  const currentPage = focusedIndex >= 0
+    ? getInitialTradeHistoryPage(trades.map((trade) => trade.id), focusedTradeId, PAGE_SIZE)
+    : Math.min(requestedPage, totalPages);
   const startIdx = (currentPage - 1) * PAGE_SIZE;
   const pageTrades = trades.slice(startIdx, startIdx + PAGE_SIZE);
+  const expandedIndex = trades.findIndex((trade) => trade.id === expandedId);
 
-  const toggleTrade = useCallback((id: string) => {
+  function navigate(next: TradeHistoryScope) {
+    if (dirty) { setBlocked(true); return; }
+    router.push(buildTradeHistoryHref(next), { scroll: false });
+  }
+  function setPage(page: number) {
+    navigate({ ...scope, page: String(page), tradeId: undefined });
+  }
+  function setFilter(key: keyof TradeHistoryScope, value: string) {
+    navigate({ ...scope, [key]: value || undefined, page: undefined, tradeId: undefined });
+  }
+  function toggleTrade(id: string) {
+    if (dirty) { setBlocked(true); return; }
     setExpandedId((current) => current === id ? null : id);
-  }, []);
+  }
+  function reviewTrade(index: number) {
+    const trade = trades[index];
+    if (dirty) { setBlocked(true); return; }
+    if (trade) { setExpandedId(trade.id); navigate({ ...scope, tradeId: trade.id, page: undefined }); }
+  }
+  const updateTrade = useCallback((id: string, changes: { notes?: string | null; tags?: string | null }) => {
+    setUpdates((current) => ({ ...current, [id]: { ...current[id], ...changes } }));
+    if (changes.tags !== undefined) router.refresh();
+  }, [router]);
 
   useEffect(() => {
     if (!focusedTradeId || expandedId !== focusedTradeId) return;
@@ -129,7 +166,7 @@ export function TradeHistoryTable({
     return () => window.cancelAnimationFrame(frame);
   }, [expandedId, focusedTradeId, currentPage]);
 
-  const downloadCsv = useCallback(() => {
+  function downloadCsv() {
     const headers = locale === "zh"
       ? ["交易对", "方向", "数量", "开仓价格", "开仓时间", "平仓价格", "平仓时间", "持仓时间", "手续费", "资金费", "已实现盈亏", "标签", "笔记"]
       : ["Symbol", "Side", "Qty", "Entry Price", "Entry Time", "Exit Price", "Exit Time", "Hold Duration", "Fee", "Funding Fee", "Realised PNL", "Tags", "Notes"];
@@ -156,7 +193,7 @@ export function TradeHistoryTable({
     a.download = `trades_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [locale, trades]);
+  }
 
   const getPageNumbers = () => {
     const pages: (number | "...")[] = [];
@@ -196,8 +233,34 @@ export function TradeHistoryTable({
         </button>
       </div>
 
+      <div className="flex flex-wrap items-end gap-3 border-b border-border px-5 py-4">
+        {([ ["symbol", symbols], ["side", ["Long", "Short"]], ["tag", tags] ] as const).map(([key, options]) => (
+          <label key={key} className="grid gap-1.5 text-xs text-text-muted">
+            {filters[key]}
+            <select aria-label={filters[key]} value={scope[key] ?? ""} onChange={(event) => setFilter(key, event.target.value)} className="min-w-32 rounded-lg border border-border bg-bg-primary px-3 py-2 text-text-secondary focus:border-yellow focus:outline-none">
+              <option value="">{filters.all}</option>
+              {scope[key] && !options.some((option) => option === scope[key]) && <option value={scope[key]}>{scope[key]}</option>}
+              {options.map((option) => <option key={option} value={option}>{key === "side" ? option === "Long" ? dictionary.common.long : dictionary.common.short : option}</option>)}
+            </select>
+          </label>
+        ))}
+        <label className="grid gap-1.5 text-xs text-text-muted">{filters.exitDate}
+          <input type="date" aria-label={filters.exitDate} value={scope.exitDate ?? ""} onChange={(event) => setFilter("exitDate", event.target.value)} className="rounded-lg border border-border bg-bg-primary px-3 py-2 text-text-secondary focus:border-yellow focus:outline-none" />
+        </label>
+        <label className="grid gap-1.5 text-xs text-text-muted">{filters.entrySlot}
+          <select aria-label={filters.entrySlot} value={scope.entrySlot ?? ""} onChange={(event) => setFilter("entrySlot", event.target.value)} className="rounded-lg border border-border bg-bg-primary px-3 py-2 text-text-secondary focus:border-yellow focus:outline-none">
+            <option value="">{filters.all}</option>
+            {Array.from({ length: 12 }, (_, i) => i * 2).map((hour) => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00–{String(hour + 2).padStart(2, "0")}:00</option>)}
+          </select>
+        </label>
+        {scope.entryDay && <button type="button" onClick={() => setFilter("entryDay", "")} className="rounded border border-border px-3 py-2 text-xs text-text-secondary">{filters.entryDay}: {dictionary.analytics.days[scope.entryDay as keyof typeof dictionary.analytics.days]} ×</button>}
+        <button type="button" onClick={() => navigate({ range: scope.range, exchangeId: scope.exchangeId })} className="rounded-lg px-3 py-2 text-xs text-text-muted hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60">{filters.clear}</button>
+        <p role="status" className="basis-full pt-1 text-xs text-text-muted">{template(filters.results, { count: trades.length, pnl: formatMoney(trades.reduce((sum, trade) => sum + trade.realizedPnl, 0)) })}</p>
+      </div>
+      {focusedTradeId && focusedIndex < 0 && <p role="status" className="px-5 py-3 text-xs text-yellow">{filters.missingTrade}</p>}
+      {blocked && dirty && <p role="status" className="px-5 py-3 text-xs text-yellow">{filters.unsaved}</p>}
       <div className="overflow-x-auto">
-        <div className="w-full text-sm">
+        <div className="w-full text-sm lg:min-w-[1120px]">
           <div className={`hidden ${TRADE_GRID_COLUMNS} gap-3 border-b border-border bg-bg-tertiary/42 px-5 py-3 text-[11px] font-semibold text-text-muted lg:grid`}>
             <div />
             <div>{text.columns.symbolSize}</div>
@@ -238,6 +301,7 @@ export function TradeHistoryTable({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-text-primary">{trade.symbol}</span>
+                      {trade.accountingStatus === "needs-review" && <span title={dictionary.accounting.hint} className="rounded border border-yellow/25 px-1 text-[10px] text-yellow">{dictionary.accounting[trade.accountingStatus]}</span>}
                     </div>
                     <div className={`mt-1 font-mono text-xs tabular-nums ${trade.side === "Long" ? "text-green" : "text-red"}`}>
                       {formatSignedPositionNotional(trade.entryValue, trade.side)}
@@ -293,7 +357,14 @@ export function TradeHistoryTable({
 
                 {isExpanded && (
                   <div id={detailId} className="border-b border-border-light bg-bg-primary">
-                    <TradeDetailPanel trade={trade} />
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
+                      <span className="text-xs text-text-muted">{template(filters.reviewPosition, { index: expandedIndex + 1, total: trades.length })}</span>
+                      <div className="flex gap-2">
+                        <button type="button" disabled={expandedIndex <= 0} onClick={() => reviewTrade(expandedIndex - 1)} className="rounded border border-border px-3 py-1.5 text-xs hover:text-yellow disabled:opacity-30">{filters.previousTrade}</button>
+                        <button type="button" disabled={expandedIndex >= trades.length - 1} onClick={() => reviewTrade(expandedIndex + 1)} className="rounded border border-border px-3 py-1.5 text-xs hover:text-yellow disabled:opacity-30">{filters.nextTrade}</button>
+                      </div>
+                    </div>
+                    <TradeDetailPanel key={trade.id} trade={trade} onTradeUpdated={updateTrade} onDirtyChange={setDirty} />
                   </div>
                 )}
               </div>
@@ -316,7 +387,7 @@ export function TradeHistoryTable({
             <button
               type="button"
               aria-label={text.previousAria}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              onClick={() => setPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
               className="rounded border border-border px-2 py-1 text-xs text-text-secondary transition-colors hover:border-text-muted hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:cursor-not-allowed disabled:opacity-30"
             >
@@ -331,7 +402,7 @@ export function TradeHistoryTable({
                   aria-label={template(text.goToPage, { page })}
                   aria-current={currentPage === page ? "page" : undefined}
                   key={page}
-                  onClick={() => setCurrentPage(page as number)}
+                  onClick={() => setPage(page as number)}
                   className={`rounded px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 ${
                     currentPage === page
                       ? "bg-yellow text-bg-primary font-semibold"
@@ -345,7 +416,7 @@ export function TradeHistoryTable({
             <button
               type="button"
               aria-label={text.nextAria}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
               className="rounded border border-border px-2 py-1 text-xs text-text-secondary transition-colors hover:border-text-muted hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 disabled:cursor-not-allowed disabled:opacity-30"
             >

@@ -1,3 +1,5 @@
+import { normalizeDashboardParams } from "@/lib/dashboard/trade-history-routing";
+import { AccountingNotice } from "@/components/dashboard/AccountingNotice";
 import { parseRange } from "@/lib/formatters";
 import { getTradesInRange } from "@/lib/dashboard/queries";
 import { calculateMetrics } from "@/lib/analysis";
@@ -30,7 +32,7 @@ interface PageProps {
 }
 
 export default async function AnalyticsPage({ searchParams }: PageProps) {
-  const params = await searchParams;
+  const params = normalizeDashboardParams(await searchParams);
   const range = parseRange(params.range);
   const exchangeId = params.exchangeId;
   const dictionary = await getServerDictionary();
@@ -53,6 +55,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-4">
+      <AccountingNotice trades={trades} text={dictionary.accounting} />
       {/* Section 1: Statistics Panel */}
       <StatisticsPanel stats={statistics} />
 
@@ -79,8 +82,8 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
       {/* Section 7: Trade Result By Day + By Time */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TradeResultByDayChart data={resultByDay} />
-        <TradeResultByTimeChart data={resultByTime} />
+        <TradeResultByDayChart data={resultByDay} scope={{ range, exchangeId }} />
+        <TradeResultByTimeChart data={resultByTime} scope={{ range, exchangeId }} />
       </div>
 
       {/* Section 8: Duration Report + Size Report */}
@@ -90,7 +93,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Section 9: Traded Symbols Report */}
-      <SymbolsReport data={symbolsReport} />
+      <SymbolsReport key={`${range}-${exchangeId ?? "all"}`} data={symbolsReport} scope={{ range, exchangeId }} />
 
       {/* Section 10: Funding + Fees */}
       <FundingFeesPanel funding={funding} fees={fees} />

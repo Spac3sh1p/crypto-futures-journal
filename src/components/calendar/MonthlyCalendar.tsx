@@ -115,19 +115,20 @@ function sideToneClass(side: string): string {
     : "bg-green text-[#06131A]";
 }
 
-function TradePill({ trade }: { trade: MonthlyCalendarTrade }) {
+function TradePill({ trade, exchangeId, date }: { trade: MonthlyCalendarTrade; exchangeId?: string; date: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5 font-mono text-[11px] font-bold leading-5" title={`${trade.side} ${trade.symbol} ${formatPnl(trade.pnl)}`}>
+    <Link href={buildTradeHistoryHref({ tradeId: trade.id, exchangeId, exitDate: date })} className="rounded hover:bg-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 flex min-w-0 items-center gap-1.5 font-mono text-[11px] font-bold leading-5" title={`${trade.side} ${trade.symbol} ${formatPnl(trade.pnl)}`}>
       <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] uppercase tracking-[0.03em] ${sideToneClass(trade.side)}`}>
         {trade.side}
       </span>
       <span className="min-w-0 truncate text-cyan-300">{trade.symbol}</span>
       <span className={`shrink-0 tabular-nums ${pnlToneClass(trade.pnl)}`}>{formatPnl(trade.pnl)}</span>
-    </div>
+    </Link>
   );
 }
 
-function DayCell({ day, text }: { day: MonthlyCalendarDay; text: ReturnType<typeof getText> }) {
+function DayCell({ day, text, exchangeId }: { day: MonthlyCalendarDay; text: ReturnType<typeof getText>; exchangeId?: string }) {
+  const href = buildTradeHistoryHref({ exchangeId, exitDate: day.date });
   const visibleTrades = day.trades.slice(0, 4);
   const hiddenTradeCount = Math.max(day.trades.length - visibleTrades.length, 0);
 
@@ -135,21 +136,21 @@ function DayCell({ day, text }: { day: MonthlyCalendarDay; text: ReturnType<type
     <div className={`flex min-h-[146px] min-w-[148px] flex-col border p-2.5 ${dayToneClass(day)}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[11px] font-semibold text-text-muted">{day.tradeCount > 0 ? `${day.tradeCount}x` : ""}</span>
-        <span className={`font-mono text-xs font-bold ${day.isCurrentMonth ? "text-text-secondary" : "text-text-muted"}`}>
+        <Link href={href} aria-label={`${day.date} · ${text.trades}`} className={`rounded px-1 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 font-mono text-xs font-bold ${day.isCurrentMonth ? "text-text-secondary" : "text-text-muted"}`}>
           {day.dayOfMonth}
-        </span>
+        </Link>
       </div>
 
       <div className="mt-2 flex flex-1 flex-col gap-1">
         {visibleTrades.length > 0 ? (
-          visibleTrades.map((trade) => <TradePill key={trade.id} trade={trade} />)
+          visibleTrades.map((trade) => <TradePill key={trade.id} trade={trade} exchangeId={exchangeId} date={day.date} />)
         ) : (
           <div className="flex-1" aria-hidden="true" />
         )}
         {hiddenTradeCount > 0 && (
-          <div className="font-mono text-[11px] font-semibold text-text-muted">
+          <Link href={href} className="rounded font-mono text-[11px] font-semibold text-text-muted hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60">
             +{hiddenTradeCount} {text.moreTrades}
-          </div>
+          </Link>
         )}
       </div>
 
@@ -320,7 +321,7 @@ export function MonthlyCalendar({
                     </span>
                   </div>
                   {week.days.map((day) => (
-                    <DayCell key={day.date} day={day} text={text} />
+                    <DayCell key={day.date} day={day} text={text} exchangeId={exchangeId} />
                   ))}
                 </div>
               ))}

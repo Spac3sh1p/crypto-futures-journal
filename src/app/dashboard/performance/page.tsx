@@ -1,4 +1,7 @@
-import Link from "next/link";
+import { normalizeDashboardParams } from "@/lib/dashboard/trade-history-routing";
+import { AccountingNotice } from "@/components/dashboard/AccountingNotice";
+import { filterTradesForHistory, normalizeTradeFilters, type TradeHistoryScope } from "@/lib/dashboard/trade-history-routing";
+import { TradeNavigationLink as Link } from "@/components/dashboard/TradeNavigationGuard";
 import { parseRange } from "@/lib/formatters";
 import { getTradesInRange } from "@/lib/dashboard/queries";
 import { getServerDictionary } from "@/lib/i18n-server";
@@ -6,12 +9,13 @@ import { OverviewDashboard } from "@/components/overview/OverviewDashboard";
 import { TradeHistoryTable, type SerializedTrade } from "@/components/dashboard/TradeHistoryTable";
 
 interface PageProps {
-  searchParams: Promise<{ range?: string; exchangeId?: string; view?: string; tradeId?: string }>;
+  searchParams: Promise<TradeHistoryScope & { view?: string }>;
 }
 
 function serializeTrade(trade: Awaited<ReturnType<typeof getTradesInRange>>[number]): SerializedTrade {
   return {
     id: trade.id,
+    accountingStatus: trade.accountingStatus,
     exchangeName: trade.exchange.name,
     symbol: trade.symbol,
     side: trade.side,
@@ -41,7 +45,7 @@ function buildHref(params: { range?: string; exchangeId?: string }, view?: strin
 }
 
 export default async function PerformancePage({ searchParams }: PageProps) {
-  const params = await searchParams;
+  const params = normalizeDashboardParams(await searchParams);
 
   if (params.view !== "trades") {
     return <OverviewDashboard params={params} />;
@@ -51,7 +55,11 @@ export default async function PerformancePage({ searchParams }: PageProps) {
   const exchangeId = params.exchangeId;
   const dictionary = await getServerDictionary();
   const overview = dictionary.overview;
-  const trades = await getTradesInRange(range, exchangeId);
+  const candidates = await getTradesInRange(range, exchangeId);
+  const scope = { ...normalizeTradeFilters(params), range, exchangeId, tradeId: params.tradeId, page: params.page };
+  const trades = filterTradesForHistory(candidates, scope);
+  const symbols = [...new Set(candidates.map((trade) => trade.symbol))].sort();
+  const tags = [...new Set(candidates.flatMap((trade) => trade.tags?.split(",").map((tag) => tag.trim()).filter(Boolean) ?? []))].sort();
 
   return (
     <div className="space-y-4">
@@ -64,10 +72,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
             <span className="rounded-md bg-yellow px-3 py-1.5 text-xs font-semibold text-[#08111D]">
               {overview.secondaryNav.trades}
             </span>
-            <Link className="rounded-md px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-bg-hover hover:text-text-primary" href={buildHref(params)}>
-              {overview.secondaryNav.review}
-            </Link>
-            <Link className="rounded-md px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-bg-hover hover:text-text-primary" href="/dashboard/analytics">
+            <Link className="rounded-md px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-bg-hover hover:text-text-primary" href={buildHref(params).replace("/dashboard/performance", "/dashboard/analytics")}>
               {overview.secondaryNav.analytics}
             </Link>
           </nav>
@@ -80,10 +85,14 @@ export default async function PerformancePage({ searchParams }: PageProps) {
         </div>
       </section>
 
+      <AccountingNotice trades={trades} text={dictionary.accounting} />
       <TradeHistoryTable
-        key={params.tradeId ?? "trade-history"}
+        key={JSON.stringify(scope)}
         trades={trades.map(serializeTrade)}
         focusedTradeId={params.tradeId}
+        scope={scope}
+        symbols={symbols}
+        tags={tags}
       />
     </div>
   );

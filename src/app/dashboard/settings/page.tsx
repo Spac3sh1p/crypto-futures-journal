@@ -159,8 +159,9 @@ export default function SettingsPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Platform select */}
             <div>
-              <label className="text-xs text-text-muted block mb-1.5">{text.platform}</label>
+              <label htmlFor="exchange-platform" className="text-xs text-text-muted block mb-1.5">{text.platform}</label>
               <select
+                id="exchange-platform"
                 value={formData.name}
                 onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value as "bybit" | "binance" | "hyperliquid" }))}
                 className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary transition-colors focus:border-yellow focus:outline-none"
@@ -173,8 +174,9 @@ export default function SettingsPage() {
 
             {/* API Key */}
             <div>
-              <label className="text-xs text-text-muted block mb-1.5">{text.apiKey}</label>
+              <label htmlFor="exchange-apiKey" className="text-xs text-text-muted block mb-1.5">{text.apiKey}</label>
               <input
+                id="exchange-apiKey"
                 type="text"
                 value={formData.apiKey}
                 onChange={(e) => setFormData((f) => ({ ...f, apiKey: e.target.value }))}
@@ -186,8 +188,9 @@ export default function SettingsPage() {
 
             {/* API Secret */}
             <div>
-              <label className="text-xs text-text-muted block mb-1.5">{text.apiSecret}</label>
+              <label htmlFor="exchange-apiSecret" className="text-xs text-text-muted block mb-1.5">{text.apiSecret}</label>
               <input
+                id="exchange-apiSecret"
                 type="password"
                 value={formData.apiSecret}
                 onChange={(e) => setFormData((f) => ({ ...f, apiSecret: e.target.value }))}
@@ -199,8 +202,9 @@ export default function SettingsPage() {
 
             {/* Label */}
             <div>
-              <label className="text-xs text-text-muted block mb-1.5">{text.label}</label>
+              <label htmlFor="exchange-label" className="text-xs text-text-muted block mb-1.5">{text.label}</label>
               <input
+                id="exchange-label"
                 type="text"
                 value={formData.label}
                 onChange={(e) => setFormData((f) => ({ ...f, label: e.target.value }))}
