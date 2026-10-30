@@ -34,11 +34,11 @@
 - “资金费率”列实际显示的是 fundingFee 金额，不是费率百分比；要显示费率得另定口径。
 - 命令用 `npm.cmd`/`npx.cmd`（本机 PowerShell 执行策略会拦 .ps1 shim，Codex 会话一直这么用）。Bitdefender ATD 会直接拦 `-EncodedCommand`、`-ExecutionPolicy Bypass` 和大段 `powershell -Command` 写文件这类命令；给 powershell.exe 加白名单风险高，之前已建议不要这么做。
 ### 当前状态与未完成项（截至 2026-09-05）
-- 最后一次会话按评审做完第 1、2 优先级：统一统计口径，修复流水重复归账和 Binance 双向持仓/反手导入，调整 PC 指标布局、筛选和跨页定位。116 项测试 + tsc/lint/build + 桌面验收通过，但没有 commit、没跑真实同步；历史交易没有重算，需要另外核对。
-- 交接文档在 `PRIORITY_1_2_HANDOFF.md`，评审报告在 `output/playwright/audit-20260904/项目评审.md`。远端只剩 `master`（停在 2026-06-07 的 `675678d`），之后的本地改动（包括 06-19 的 Recharts 修复）都没提交；当前 git 状态未验证。
+- 最后一次会话按评审做完第 1、2 优先级：统一统计口径，修复流水重复归账和 Binance 双向持仓/反手导入，调整 PC 指标布局、筛选和跨页定位。116 项测试 + tsc/lint/build + 桌面验收通过。2026-10-30 已按模块拆成 6 个提交（`525b90e`..`c902f27`）并随 PR #1 合入 `master`（合并提交 `9f5dc59`）；没跑真实同步，历史交易没有重算，需要另外核对。
+- 交接文档在 `PRIORITY_1_2_HANDOFF.md`，评审报告在 `output/playwright/audit-20260904/项目评审.md`。远端 `master` 已于 2026-10-30 推进到 `9f5dc59`（含 06-19 的 Recharts 修复和 09-05 全部改动）；分支 `fix/dashboard-auth-and-secrets` 本地与远端都还在，未删。仓库此时为 public。
 - 评审的第 3 优先级没做：待复盘列表、策略/失误分类等（09-05 已补部分月历/分析跳转，细节以 HANDOFF 为准）。“本期结论”仍是静态占位，规则引擎要先和用户讨论（此前方案是先用可测试的规则引擎；接外部 AI 润色涉及隐私，不能默认做）。
 - 安全遗留（2026-06-08 Codex Security）：dashboard 页面不经 `requireAuth()` 直接读库，未登录也能看数据；`.env` 没有 `ENCRYPTION_KEY`，库里的 apiSecret 是 `plain:` 明文；dev server 监听全部网卡。
-  - 2026-10-30 已在分支 `fix/dashboard-auth-and-secrets` 修复：`dashboard/layout.tsx` 统一调 `isAuthenticated()` 未登录跳 `/login`（新增登录页 `src/app/login` + `components/auth/LoginForm.tsx`）；`.env` 补了 `APP_PASSWORD`/`AUTH_SECRET`/`ENCRYPTION_KEY`，并用 `scripts/reencrypt-secrets.ts` 把 2 条 apiSecret 重新加密为 `enc:`（之后 VACUUM 清掉了旧页）；`npm run dev` 改为 `-H 127.0.0.1`。注意 `isAuthenticated()` 在开发模式下若 `APP_PASSWORD`/`AUTH_SECRET` 缺失仍会放行，所以 `.env` 里这两项不能删。交易所 key 是否轮换由用户决定，未做。
+  - 2026-10-30 已在分支 `fix/dashboard-auth-and-secrets` 修复：`dashboard/layout.tsx` 统一调 `isAuthenticated()` 未登录跳 `/login`（新增登录页 `src/app/login` + `components/auth/LoginForm.tsx`）；`.env` 补了 `APP_PASSWORD`/`AUTH_SECRET`/`ENCRYPTION_KEY`，并用 `scripts/reencrypt-secrets.ts` 把 2 条 apiSecret 重新加密为 `enc:`（之后 VACUUM 清掉了旧页）；`npm run dev` 改为 `-H 127.0.0.1`。`isAuthenticated()` 在开发模式下若 `APP_PASSWORD`/`AUTH_SECRET` 缺失会直接放行、生产构建则 fail closed。用户同日决定本地自用不要登录：已从 `.env` 删掉这两项（`ENCRYPTION_KEY` 保留，不能删），dev 下免登录，登录页代码保留给公开版本；要恢复登录就把两项加回去并重启。交易所 key 是否轮换由用户决定，未做。
 - 总览每次渲染都实时请求余额（每个交易所 4 秒超时），可能拖慢页面；曾建议加缓存，是否已改未验证。
 - 登录自启动：Windows 启动文件夹里的 `Crypto Futures Journal Dev.vbs` 调 `scripts/start-hidden-dev.ps1`，隐藏运行 `npm run dev`（端口 3000，`.next-dev.pid` 防重复启动，日志 `persistent-dev*.log`）。2026-06-04 遇到过 pid 文件指向残留进程的情况，没处理。
 - GitHub 仓库截至 2026-07-20 仍为私有：用户想公开，Codex 平台拒绝执行。当时扫了全部提交历史，没发现密钥（本机没装 Gitleaks/TruffleHog）。
