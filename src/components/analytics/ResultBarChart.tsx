@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
 import {
   Bar,
   BarChart,
@@ -61,12 +60,10 @@ function BarTooltip({ active, payload, label, seriesName }: {
 }
 
 export interface ResultBarItem extends DayTimeBar {
-  /** 坐标轴与下钻链接上的短标签（已翻译）；缺省用 label */
+  /** 坐标轴上的短标签（已翻译）；缺省用 label */
   display?: string;
   /** 提示框里的完整标签，例如 00:00–02:00；缺省用 display */
   tooltipLabel?: string;
-  /** 下钻到交易明细的链接，由服务端页面预先算好 */
-  href: string;
 }
 
 export function ResultBarChart({
@@ -124,14 +121,6 @@ export function ResultBarChart({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <nav aria-label={title} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line px-4 py-2 text-[12px]">
-        <span className="text-ink-3">{dictionary.tradeFilters.drillDown}</span>
-        {chartData.map((item) => (
-          <Link key={item.label} href={item.href} className="ui-link ui-num text-ink-2 hover:text-ink">
-            {item.display}
-          </Link>
-        ))}
-      </nav>
     </Panel>
   );
 }

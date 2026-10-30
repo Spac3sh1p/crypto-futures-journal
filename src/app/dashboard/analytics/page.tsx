@@ -1,4 +1,4 @@
-import { buildTradeHistoryHref, normalizeDashboardParams } from "@/lib/dashboard/trade-history-routing";
+import { normalizeDashboardParams } from "@/lib/dashboard/trade-history-routing";
 import { parseRange } from "@/lib/formatters";
 import { getTradesInRange } from "@/lib/dashboard/queries";
 import { calculateMetrics } from "@/lib/analysis";
@@ -48,7 +48,6 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
   const resultByDay = buildTradeResultByDay(trades).map((item) => ({
     ...item,
     display: dictionary.analytics.days[item.label as keyof typeof dictionary.analytics.days] ?? item.label,
-    href: buildTradeHistoryHref({ ...scope, entryDay: item.label }),
   }));
   const pad2 = (hour: number) => String(hour).padStart(2, "0");
   const resultByTime = buildTradeResultByTime(trades).map((item, index) => {
@@ -59,7 +58,6 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       // 坐标轴用「0–2时」，提示框用「00:00–02:00」，与交易明细的开仓时段筛选一致
       display: locale === "zh" ? `${start}–${end}时` : `${start}–${end}h`,
       tooltipLabel: `${pad2(start)}:00–${pad2(end)}:00`,
-      href: buildTradeHistoryHref({ ...scope, entrySlot: String(start) }),
     };
   });
   const durationReport = buildDurationReport(trades).map((bucket) => ({ ...bucket, label: formatDurationBucketLabel(bucket.label, locale) }));
