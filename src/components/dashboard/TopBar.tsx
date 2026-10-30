@@ -1,5 +1,6 @@
 "use client";
 
+import { useTradeNavigation } from "./TradeNavigationGuard";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LanguageToggle } from "@/components/i18n/LanguageToggle";
 import { useI18n } from "@/components/i18n/LanguageProvider";
@@ -42,6 +43,7 @@ function rangeLabel(activeRange: string, locale: "zh" | "en"): string {
 export function TopBar() {
   const { dictionary, locale } = useI18n();
   const router = useRouter();
+  const { requestNavigation } = useTradeNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeRange = searchParams.get("range") || "30d";
@@ -62,13 +64,18 @@ export function TopBar() {
       : dictionary.topBar.pages.performance;
 
   function handleRangeChange(range: string) {
+    if (!requestNavigation()) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("range", range);
     params.delete("month");
+    params.delete("page");
+    params.delete("tradeId");
+    params.delete("exitDate");
     router.push(`?${params.toString()}`);
   }
 
   function handleMonthChange(month: string) {
+    if (!requestNavigation()) return;
     if (!month) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", normalizeMonthParam(month));
@@ -77,6 +84,7 @@ export function TopBar() {
   }
 
   function handleRefresh() {
+    if (!requestNavigation()) return;
     router.refresh();
   }
 

@@ -14,6 +14,26 @@ export function normalizeLocale(value: unknown): Locale {
 
 export const dictionaries = {
   zh: {
+    accounting: {
+      title: "已平仓交易口径",
+      summary: "{total} 笔 · 流水一致 {matched} · 导入值 {imported} · 待核对 {review}",
+      hint: "净盈亏按已知导入口径计算。流水重叠、缺失或资金费归属不明时保留导入依据；待核对记录仍计入统计，真实金额请结合交易所账单确认。",
+      matched: "流水一致", imported: "导入值", "needs-review": "待核对",
+      closedCurve: "区间交易累计", accountCurve: "账户流水累计",
+      closedHint: "从当前区间的第一笔已平仓交易累计，与上方盈亏及交易分析一致。",
+      accountHint: "仅覆盖 {accounts} 的已导入 USDT 流水。累计起点保留区间前历史，可能含未平仓费用及部分平仓；不能作为上方区间交易总额。",
+      noFlows: "暂无账户流水", currentBalance: "账户当前余额", tradeCount: "区间交易笔数",
+      accountSharpe: "流水收益夏普（参考）", sharpeHint: "按已有流水日和净转入估算，不是完整账户权益收益；缺少有效本金时不展示。",
+      fillHint: "以下是聚合开平仓摘要。尚无逐笔成交手续费证据，分项留空；总手续费 {fee}。",
+    },
+    tradeFilters: {
+      symbol: "交易对", side: "方向", tag: "标签", exitDate: "平仓日期", entrySlot: "开仓时段", entryDay: "开仓星期",
+      all: "全部", clear: "清除筛选", results: "筛选结果 {count} 笔 · 净盈亏 {pnl}",
+      previousTrade: "上一笔", nextTrade: "下一笔", reviewPosition: "当前筛选内第 {index} / {total} 笔",
+      unsaved: "有未保存内容或正在保存，请先保存或取消编辑，再切换交易或筛选。",
+      missingTrade: "目标交易不在当前筛选结果中，可清除筛选或切换账户、日期范围后查找。",
+      drillDown: "查看对应交易", dayTrades: "查看 {date} 的交易",
+    },
     common: {
       appName: "合约交易复盘",
       appShortName: "合约",
@@ -152,7 +172,9 @@ export const dictionaries = {
       recentTradesHint: "点击交易展开 K线复盘，完整表格放在交易明细页。",
       periodReview: {
         title: "本期结论",
-        subtitle: "规则引擎待接入，当前为结构预览。",
+        subtitle: "尚未生成基于当前数据的周期结论。",
+        emptyHint: "可先从品种表现查找交易，逐笔记录标签和笔记，为后续复盘积累依据。",
+        startReview: "开始逐笔复盘",
         scoreLabel: "综合评分",
         grade: "B+",
         item1Title: "盈利主要来自 BTCUSDT 趋势段",
@@ -214,7 +236,7 @@ export const dictionaries = {
     tradeDetail: {
       tabs: {
         chart: "K线复盘",
-        fills: "成交明细",
+        fills: "开平仓摘要",
         notes: "复盘笔记",
       },
       totalFunding: "资金费",
@@ -403,6 +425,26 @@ export const dictionaries = {
     },
   },
   en: {
+    accounting: {
+      title: "Closed-trade basis",
+      summary: "{total} trades · Flow-consistent {matched} · Imported {imported} · To verify {review}",
+      hint: "Net PnL follows the known import basis. Overlapping, missing or unattributed funding flows retain the import basis. Records to verify remain in totals; confirm amounts with exchange statements.",
+      matched: "Flow-consistent", imported: "Imported", "needs-review": "To verify",
+      closedCurve: "Period trade PnL", accountCurve: "Account flow PnL",
+      closedHint: "Accumulates from the first closed trade in this period, matching the headline and trade analytics.",
+      accountHint: "Imported USDT flows for {accounts} only. Includes history before this period, potentially open-position costs and partial closes; this is separate from the period trade total.",
+      noFlows: "No account flows", currentBalance: "Current account balance", tradeCount: "Trades in period",
+      accountSharpe: "Flow return Sharpe (estimate)", sharpeHint: "Estimated from recorded flow days and net transfers, not complete equity returns. Hidden when capital is unavailable.",
+      fillHint: "Aggregated entry and exit summary. Individual fill fees are unavailable and left blank. Total fees: {fee}.",
+    },
+    tradeFilters: {
+      symbol: "Symbol", side: "Side", tag: "Tag", exitDate: "Exit date", entrySlot: "Entry time", entryDay: "Entry weekday",
+      all: "All", clear: "Clear filters", results: "{count} matching trades · Net PnL {pnl}",
+      previousTrade: "Previous trade", nextTrade: "Next trade", reviewPosition: "Trade {index} of {total} in this selection",
+      unsaved: "Changes are unsaved or saving. Save or cancel editing before switching trades or filters.",
+      missingTrade: "The requested trade is outside this selection. Clear filters or change account and date range to find it.",
+      drillDown: "View matching trades", dayTrades: "View trades on {date}",
+    },
     common: {
       appName: "Crypto Futures",
       appShortName: "CF",
@@ -541,7 +583,9 @@ export const dictionaries = {
       recentTradesHint: "Click a trade to expand candlestick review. Full table lives in trade history.",
       periodReview: {
         title: "Period Review",
-        subtitle: "Rule engine pending; this is the first UI structure.",
+        subtitle: "No data-based period conclusions yet.",
+        emptyHint: "Explore symbol performance and record tags and notes for individual trades to build evidence for your review.",
+        startReview: "Review trades",
         scoreLabel: "Overall Score",
         grade: "B+",
         item1Title: "Profit mainly came from BTCUSDT trend legs",
@@ -603,7 +647,7 @@ export const dictionaries = {
     tradeDetail: {
       tabs: {
         chart: "Chart Summary",
-        fills: "Fills",
+        fills: "Entry / exit",
         notes: "Notes",
       },
       totalFunding: "Total Funding",
@@ -627,7 +671,7 @@ export const dictionaries = {
       tagsSaveFailed: "Could not save tags",
       notesSaved: "Notes saved",
       notesSaveFailed: "Could not save notes",
-      fillsCaption: "Synthetic open and close fill summary",
+      fillsCaption: "Aggregated entry and exit summary",
       open: "Open",
       close: "Close",
       removeTag: "Remove {tag} tag",
