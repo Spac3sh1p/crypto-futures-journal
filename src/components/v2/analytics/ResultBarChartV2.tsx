@@ -19,7 +19,7 @@ import { buildNiceScale } from "@/lib/dashboard/chart-ticks";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { Panel, PanelHeader } from "@/components/v2/ui/Panel";
 
-const CHART_HEIGHT = 236;
+const CHART_HEIGHT = 200;
 
 /** 柱子数据端 4px 圆角、基线端方角：正值圆顶，负值圆底 */
 interface BarShapeProps {
@@ -82,8 +82,8 @@ export function ResultBarChartV2({
 
   return (
     <Panel>
-      <PanelHeader title={title} subtitle={hint} />
-      <div className="px-2 pt-4">
+      <PanelHeader size="sm" title={title} subtitle={hint} />
+      <div className="px-2 pt-3">
         <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
           <BarChart data={chartData} margin={{ top: 8, right: 16, left: 4, bottom: 0 }} barCategoryGap="35%">
             <CartesianGrid vertical={false} stroke="var(--v2-line)" />
@@ -121,10 +121,10 @@ export function ResultBarChartV2({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <nav aria-label={title} className="flex flex-wrap items-center gap-1.5 border-t border-line px-5 py-3">
+      <nav aria-label={title} className="flex flex-wrap items-center gap-1 border-t border-line px-4 py-2">
         <span className="mr-1 text-[12px] text-ink-3">{dictionary.tradeFilters.drillDown}</span>
         {chartData.map((item) => (
-          <Link key={item.label} href={item.href} className="v2-button h-7 px-2 text-[12px] no-underline">
+          <Link key={item.label} href={item.href} className="v2-button h-6 px-1.5 text-[11px] no-underline">
             {item.display}
           </Link>
         ))}

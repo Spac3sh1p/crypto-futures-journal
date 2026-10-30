@@ -8,12 +8,13 @@ import { Panel, PanelHeader } from "@/components/v2/ui/Panel";
 export function WinLossTableV2({ title, rows, isWin }: { title: string; rows: WinLossRow[]; isWin: boolean }) {
   const { dictionary, locale } = useI18n();
   const text = dictionary.analytics.winLossTable;
-  const th = "px-5 py-2.5 text-[12px] font-normal text-ink-3";
-  const td = "v2-num px-5 py-2.5 text-[13px]";
+  const th = "px-4 py-2 text-[12px] font-normal text-ink-3";
+  const td = "v2-num px-4 py-2 text-[13px]";
 
   return (
     <Panel className="overflow-hidden">
       <PanelHeader
+        size="sm"
         title={
           <span className="flex items-center gap-2">
             <span className={`h-2 w-2 rounded-full ${isWin ? "bg-profit" : "bg-loss"}`} aria-hidden="true" />
@@ -35,7 +36,7 @@ export function WinLossTableV2({ title, rows, isWin }: { title: string; rows: Wi
           <tbody>
             {rows.map((row) => (
               <tr key={row.type} className="v2-row">
-                <td className="px-5 py-2.5 text-[13px] text-ink">
+                <td className="px-4 py-2 text-[13px] text-ink">
                   {row.type === "Long" ? dictionary.common.long : row.type === "Short" ? dictionary.common.short : dictionary.common.both}
                 </td>
                 <td className={`${td} text-right text-ink`}>{row.count}</td>

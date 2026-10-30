@@ -64,7 +64,7 @@ export default async function PreviewAnalyticsPage({ searchParams }: PageProps) 
   const durationReportDisplay = durationReport.map((bucket) => ({ ...bucket, label: formatDurationBucketLabel(bucket.label, locale) }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <StatisticsV2 stats={statistics} />
       <SummaryStripV2
         totalTrades={metrics.totalTrades}
@@ -77,15 +77,15 @@ export default async function PreviewAnalyticsPage({ searchParams }: PageProps) 
       />
       <SideBreakdownV2 data={longs} />
       <SideBreakdownV2 data={shorts} />
-      <div className="grid grid-cols-1 gap-4 min-[1280px]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[1280px]:grid-cols-2">
         <WinLossTableV2 title={dictionary.analytics.winLossTable.winningTrades} rows={winningTrades} isWin />
         <WinLossTableV2 title={dictionary.analytics.winLossTable.losingTrades} rows={losingTrades} isWin={false} />
       </div>
-      <div className="grid grid-cols-1 gap-4 min-[1280px]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[1280px]:grid-cols-2">
         <ResultBarChartV2 title={dictionary.analytics.charts.resultByDay} hint={dictionary.analytics.charts.groupByOpen} data={resultByDay} />
         <ResultBarChartV2 title={dictionary.analytics.charts.resultByTime} hint={dictionary.analytics.charts.groupByOpen} data={resultByTime} />
       </div>
-      <div className="grid grid-cols-1 gap-4 min-[1280px]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[1280px]:grid-cols-2">
         <BucketReportV2
           title={dictionary.analytics.reports.durationTitle}
           subtitle={dictionary.analytics.reports.durationSubtitle}

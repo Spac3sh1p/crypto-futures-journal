@@ -14,19 +14,19 @@ interface FeeRow {
 function FeeTable({ title, rows, typeLabel, totalLabel }: { title: string; rows: FeeRow[]; typeLabel: string; totalLabel: string }) {
   return (
     <Panel>
-      <PanelHeader title={title} />
+      <PanelHeader size="sm" title={title} />
       <table className="w-full">
         <thead>
           <tr>
-            <th className="px-5 py-2.5 text-left text-[12px] font-normal text-ink-3">{typeLabel}</th>
-            <th className="px-5 py-2.5 text-right text-[12px] font-normal text-ink-3">{totalLabel}</th>
+            <th className="px-4 py-2 text-left text-[12px] font-normal text-ink-3">{typeLabel}</th>
+            <th className="px-4 py-2 text-right text-[12px] font-normal text-ink-3">{totalLabel}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.label} className="border-t border-line">
-              <td className={`px-5 py-2.5 text-[13px] ${row.emphasis ? "font-medium text-ink" : "text-ink-2"}`}>{row.label}</td>
-              <td className={`v2-num px-5 py-2.5 text-right text-[13px] ${row.emphasis ? "font-medium" : ""} ${row.tone === "profit" ? "text-profit" : row.tone === "loss" ? "text-loss" : "text-ink"}`}>{row.value}</td>
+              <td className={`px-4 py-2 text-[13px] ${row.emphasis ? "font-medium text-ink" : "text-ink-2"}`}>{row.label}</td>
+              <td className={`v2-num px-4 py-2 text-right text-[13px] ${row.emphasis ? "font-medium" : ""} ${row.tone === "profit" ? "text-profit" : row.tone === "loss" ? "text-loss" : "text-ink"}`}>{row.value}</td>
             </tr>
           ))}
         </tbody>
@@ -46,7 +46,7 @@ export function FundingFeesV2({ funding, fees }: { funding: FundingReport; fees:
   const feesText = dictionary.analytics.fees;
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
       <FeeTable
         title={reports.fundingTitle}
         typeLabel={dictionary.common.type}
