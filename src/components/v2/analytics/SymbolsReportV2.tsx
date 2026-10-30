@@ -6,6 +6,7 @@ import { buildTradeHistoryHref, type TradeHistoryScope } from "@/lib/dashboard/t
 import { toPreviewHref } from "@/lib/dashboard/preview-routing";
 import type { SymbolReport } from "@/lib/dashboard/analytics-transforms";
 import { useI18n } from "@/components/i18n/LanguageProvider";
+import { formatMoney } from "@/lib/formatters";
 import type { Locale } from "@/lib/i18n";
 import { EmptyState, Panel, PanelHeader } from "@/components/v2/ui/Panel";
 import { SplitBar } from "@/components/v2/ui/Bars";
@@ -63,10 +64,10 @@ export function SymbolsReportV2({ data, scope }: { data: SymbolReport[]; scope?:
                 </td>
                 <td className={`${td} text-right text-ink-2`}>{formatHoldDuration(row.avgDuration, locale)}</td>
                 <td className={`${td} text-right ${row.avgGain >= 0 ? "text-profit" : "text-loss"}`}>
-                  {row.avgGain >= 0 ? "+" : ""}${row.avgGain.toFixed(2)}
+                  {formatMoney(row.avgGain)}
                 </td>
                 <td className={`${td} pr-4 text-right font-medium ${row.totalGain >= 0 ? "text-profit" : "text-loss"}`}>
-                  {row.totalGain >= 0 ? "+" : ""}${row.totalGain.toFixed(2)}
+                  {formatMoney(row.totalGain)}
                 </td>
               </tr>
             ))}
