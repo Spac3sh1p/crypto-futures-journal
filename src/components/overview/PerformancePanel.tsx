@@ -28,7 +28,7 @@ export function PerformancePanel({
 }: {
   headlineLabel: string;
   headlineValue: string;
-  headlineTone: "profit" | "loss";
+  headlineTone: "profit" | "loss" | "neutral";
   balanceLabel: string;
   /** 余额数字；服务端用 Suspense 包着传进来，会比面板其余部分晚到 */
   balance: ReactNode;
@@ -52,7 +52,7 @@ export function PerformancePanel({
       <div className="flex flex-wrap items-start justify-between gap-4 px-5 pt-5">
         <div>
           <div className="text-[13px] text-ink-3">{headlineLabel}</div>
-          <div className={`ui-figure mt-1 text-[36px] leading-none ${headlineTone === "profit" ? "text-profit" : "text-loss"}`}>
+          <div className={`ui-figure mt-1 text-[36px] leading-none ${headlineTone === "profit" ? "text-profit" : headlineTone === "loss" ? "text-loss" : "text-ink-3"}`}>
             {headlineValue}
           </div>
         </div>

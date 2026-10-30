@@ -18,29 +18,31 @@ export async function OverviewDashboard({ params }: { params: { range?: string; 
   const model = await loadOverviewModel(range, exchangeId);
   const { metrics } = model;
   const scope = { range, exchangeId };
+  // 没有交易的周期不显示 +$0.00 和 0.0%：比率、回撤无从谈起，用 -- 表示；笔数照实显示 0
+  const hasTrades = metrics.totalTrades > 0;
+  const longCount = model.trades.filter((trade) => trade.side === "Long").length;
 
   const stats: OverviewStat[] = [
     {
       label: text.winRate,
-      value: `${metrics.winRate.toFixed(1)}%`,
-      sub: `${metrics.winCount}${dictionary.common.wins} / ${metrics.lossCount}${dictionary.common.losses}`,
+      value: hasTrades ? `${metrics.winRate.toFixed(1)}%` : "--",
+      sub: hasTrades ? `${metrics.winCount}${dictionary.common.wins} / ${metrics.lossCount}${dictionary.common.losses}` : undefined,
     },
     {
       label: dictionary.performance.metrics.profitFactor,
-      value: metrics.profitFactor.toFixed(2),
+      value: hasTrades ? metrics.profitFactor.toFixed(2) : "--",
     },
     {
       label: text.maxDrawdown,
-      value: `-$${metrics.maxDrawdown.toFixed(0)}`,
+      value: !hasTrades ? "--" : metrics.maxDrawdown > 0 ? `-$${metrics.maxDrawdown.toFixed(0)}` : "$0",
       sub: metrics.maxConsecutiveLosses > 0 ? `${metrics.maxConsecutiveLosses} ${dictionary.performance.metrics.consecutiveLosses}` : undefined,
     },
     {
       label: dictionary.shell.tradeCount,
       value: String(metrics.totalTrades),
-      sub: template(dictionary.shell.sidePnl, {
-        long: model.trades.filter((trade) => trade.side === "Long").length,
-        short: model.trades.filter((trade) => trade.side === "Short").length,
-      }),
+      sub: hasTrades
+        ? template(dictionary.shell.sidePnl, { long: longCount, short: model.trades.length - longCount })
+        : undefined,
     },
   ];
 
@@ -48,8 +50,8 @@ export async function OverviewDashboard({ params }: { params: { range?: string; 
     <div className="space-y-4">
       <PerformancePanel
         headlineLabel={dictionary.performance.metrics.totalPnl}
-        headlineValue={formatMoney(metrics.totalPnl)}
-        headlineTone={metrics.totalPnl >= 0 ? "profit" : "loss"}
+        headlineValue={hasTrades ? formatMoney(metrics.totalPnl) : "--"}
+        headlineTone={!hasTrades ? "neutral" : metrics.totalPnl >= 0 ? "profit" : "loss"}
         balanceLabel={dictionary.shell.balance}
         balance={
           <Suspense fallback={<WalletBalanceFallback />}>

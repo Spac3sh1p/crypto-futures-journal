@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { Panel } from "@/components/ui/Panel";
+import { formatTradeDateTimeParts } from "@/lib/formatters";
 
 export interface ExchangeRecord {
   id: string;
@@ -52,9 +53,9 @@ export function ExchangeRow({ exchange, onDelete, onSync }: {
     setDeleting(false);
   }
 
-  const lastSyncText = exchange.lastSync
-    ? new Date(exchange.lastSync).toLocaleString(locale === "zh" ? "zh-CN" : "en-US")
-    : dictionary.common.never;
+  // 上次同步时间和交易表同一种写法，不带秒
+  const lastSync = exchange.lastSync ? formatTradeDateTimeParts(exchange.lastSync, locale) : null;
+  const lastSyncText = lastSync ? `${lastSync.date} ${lastSync.time}` : dictionary.common.never;
 
   return (
     <Panel>

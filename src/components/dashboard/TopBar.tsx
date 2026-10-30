@@ -1,9 +1,12 @@
 "use client";
 
+import { useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTradeNavigation } from "@/components/dashboard/TradeNavigationGuard";
+import { usePendingNavigation, useTradeNavigation } from "@/components/dashboard/TradeNavigationGuard";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { normalizeMonthParam } from "@/lib/dashboard/calendar-transforms";
+import { formatTradeDateTimeParts } from "@/lib/formatters";
+import type { Locale } from "@/lib/i18n";
 import { LanguageToggle } from "@/components/i18n/LanguageToggle";
 import { refreshWalletBalance } from "@/app/dashboard/actions";
 
@@ -13,29 +16,30 @@ function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-function formatDate(value: Date): string {
-  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
-}
-
 function shiftMonth(month: string, delta: number): string {
   const [year, monthNumber] = month.split("-").map(Number);
   const next = new Date(year, monthNumber - 1 + delta, 1);
   return `${next.getFullYear()}-${pad(next.getMonth() + 1)}`;
 }
 
-function rangeSpan(activeRange: string): string | null {
+/** 区间起止日期和交易表用同一种写法（中文 2026/10/30，英文 30/Oct/26） */
+function rangeSpan(activeRange: string, locale: Locale): string | null {
   if (activeRange === "all") return null;
   const days = activeRange === "7d" ? 7 : activeRange === "90d" ? 90 : 30;
   const end = new Date();
   const start = new Date(end);
   start.setDate(end.getDate() - days + 1);
-  return `${formatDate(start)} – ${formatDate(end)}`;
+  return `${formatTradeDateTimeParts(start, locale).date} – ${formatTradeDateTimeParts(end, locale).date}`;
 }
 
 export function TopBar() {
   const { dictionary, locale } = useI18n();
   const router = useRouter();
-  const { requestNavigation } = useTradeNavigation();
+  const { requestNavigation, pending } = useTradeNavigation();
+  const [isNavigating, startNavigation] = useTransition();
+  const [isRefreshing, startRefresh] = useTransition();
+  usePendingNavigation(isNavigating);
+  usePendingNavigation(isRefreshing);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeRange = searchParams.get("range") || "30d";
@@ -60,7 +64,7 @@ export function TopBar() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("range", range);
     ["month", "page", "tradeId", "exitDate"].forEach((key) => params.delete(key));
-    router.push(`?${params.toString()}`);
+    startNavigation(() => router.push(`?${params.toString()}`));
   }
 
   function handleMonthChange(month: string) {
@@ -68,7 +72,7 @@ export function TopBar() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", normalizeMonthParam(month));
     params.delete("range");
-    router.push(`?${params.toString()}`);
+    startNavigation(() => router.push(`?${params.toString()}`));
   }
 
   async function handleRefresh() {
@@ -78,13 +82,13 @@ export function TopBar() {
     } catch {
       // 清缓存失败不影响刷新本身
     }
-    router.refresh();
+    startRefresh(() => router.refresh());
   }
 
-  const span = rangeSpan(activeRange);
+  const span = rangeSpan(activeRange, locale);
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-line-strong bg-canvas px-6">
+    <header className="relative flex h-14 shrink-0 items-center justify-between gap-4 border-b border-line-strong bg-canvas px-6">
       <div className="flex min-w-0 items-center gap-4">
         <h1 className="shrink-0 text-[15px] font-semibold text-ink">{title}</h1>
         {isCalendar && (
@@ -130,13 +134,15 @@ export function TopBar() {
 
       <div className="flex shrink-0 items-center gap-2">
         <LanguageToggle />
-        <button type="button" aria-label={dictionary.topBar.refreshAria} onClick={handleRefresh} className="ui-button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <button type="button" aria-label={dictionary.topBar.refreshAria} aria-busy={isRefreshing} onClick={handleRefresh} className="ui-button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" className={isRefreshing ? "animate-spin" : undefined}>
             <path d="M20 12a8 8 0 01-13.66 5.66M4 12A8 8 0 0117.66 6.34M18 3v4h-4M6 21v-4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {dictionary.topBar.refresh}
         </button>
       </div>
+
+      {pending && <div className="ui-progress" role="progressbar" aria-label={dictionary.common.loading} />}
     </header>
   );
 }
