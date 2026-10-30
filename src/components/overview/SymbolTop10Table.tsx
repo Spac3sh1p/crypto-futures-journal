@@ -1,3 +1,5 @@
+import { TradeNavigationLink as Link } from "@/components/dashboard/TradeNavigationGuard";
+import { buildTradeHistoryHref, type TradeHistoryScope } from "@/lib/dashboard/trade-history-routing";
 import type { SymbolTop10Report } from "@/lib/dashboard/analytics-transforms";
 import { formatMoney } from "@/lib/formatters";
 import type { Dictionary } from "@/lib/i18n";
@@ -16,9 +18,11 @@ function rankClass(rank: number): string {
 export function SymbolTop10Table({
   data,
   text,
+  scope,
 }: {
   data: SymbolTop10Report[];
   text: SymbolTop10Text;
+  scope?: TradeHistoryScope;
 }) {
   return (
     <section className="trading-panel overflow-hidden">
@@ -57,7 +61,7 @@ export function SymbolTop10Table({
                       {row.rank}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-[13px] font-semibold text-text-primary">{row.symbol}</span>
+                      <Link href={buildTradeHistoryHref({ ...scope, symbol: row.symbol })} className="rounded font-mono text-[13px] font-semibold text-text-primary underline decoration-border underline-offset-4 hover:text-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60">{row.symbol}</Link>
                     </td>
                     <td className={`px-4 py-3.5 text-right font-mono text-[13px] font-bold tabular-nums ${pnlTone}`}>
                       {formatMoney(row.netPnl)}

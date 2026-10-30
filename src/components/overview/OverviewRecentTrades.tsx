@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { TradeNavigationLink as Link } from "@/components/dashboard/TradeNavigationGuard";
+import { buildTradeHistoryHref, type TradeHistoryScope } from "@/lib/dashboard/trade-history-routing";
+import { useState, useCallback } from "react";
 import { TradeDetailPanel } from "@/components/dashboard/TradeDetailPanel";
 import type { SerializedTrade } from "@/components/dashboard/TradeHistoryTable";
 import { useI18n } from "@/components/i18n/LanguageProvider";
@@ -62,9 +64,15 @@ function DurationCell({ seconds, locale }: { seconds: number; locale: "zh" | "en
   );
 }
 
-export function OverviewRecentTrades({ trades }: { trades: SerializedTrade[] }) {
+export function OverviewRecentTrades({ trades: initialTrades, scope }: { trades: SerializedTrade[]; scope?: TradeHistoryScope }) {
   const { dictionary, locale } = useI18n();
   const text = dictionary.overview;
+  const [updates, setUpdates] = useState<Record<string, Partial<SerializedTrade>>>({});
+  const trades = initialTrades.map((trade) => ({ ...trade, ...updates[trade.id] }));
+  const [dirty, setDirty] = useState(false);
+  const updateTrade = useCallback((id: string, changes: { notes?: string | null; tags?: string | null }) => {
+    setUpdates((current) => ({ ...current, [id]: { ...current[id], ...changes } }));
+  }, []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const fundingFeeLabel = locale === "zh" ? "资金费率" : "Funding";
 
@@ -75,18 +83,20 @@ export function OverviewRecentTrades({ trades }: { trades: SerializedTrade[] }) 
           <h3 className="terminal-section-title">{text.recentTrades}</h3>
           <p className="mt-1 text-xs font-medium text-text-muted">{text.recentTradesHint}</p>
         </div>
-        <a
-          href="/dashboard/performance?view=trades"
+        <Link
+          href={buildTradeHistoryHref(scope)}
+          onClick={(event) => { if (dirty) event.preventDefault(); }}
           className="rounded-lg border border-border bg-bg-tertiary/90 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:border-yellow/40 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
         >
           {text.openTradeHistory}
-        </a>
+        </Link>
       </div>
 
       {trades.length === 0 ? (
         <div className="px-5 py-10 text-center text-sm font-medium text-text-muted">{text.empty}</div>
       ) : (
-        <div>
+        <div className="overflow-x-auto">
+        <div className="lg:min-w-[1120px]">
           <div className="hidden grid-cols-[0.12fr_1fr_0.52fr_0.76fr_0.95fr_0.76fr_0.95fr_1.02fr_0.78fr_0.72fr_0.85fr_0.64fr] gap-3 border-b border-border bg-bg-tertiary/42 px-5 py-3 text-[11px] font-semibold text-text-muted lg:grid">
             <div />
             <div>{dictionary.tradeHistory.columns.symbolSize}</div>
@@ -110,7 +120,7 @@ export function OverviewRecentTrades({ trades }: { trades: SerializedTrade[] }) 
               <div key={trade.id}>
                 <button
                   type="button"
-                  onClick={() => setExpandedId((current) => current === trade.id ? null : trade.id)}
+                  onClick={() => { if (!dirty) setExpandedId((current) => current === trade.id ? null : trade.id); }}
                   aria-label={template(isExpanded ? dictionary.tradeHistory.collapse : dictionary.tradeHistory.expand, { symbol: trade.symbol })}
                   aria-expanded={isExpanded}
                   className={`grid w-full grid-cols-1 gap-3 border-b border-border-light px-5 py-4 text-left transition-colors hover:bg-bg-hover/52 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow/50 lg:grid-cols-[0.12fr_1fr_0.52fr_0.76fr_0.95fr_0.76fr_0.95fr_1.02fr_0.78fr_0.72fr_0.85fr_0.64fr] lg:items-center ${
@@ -178,12 +188,13 @@ export function OverviewRecentTrades({ trades }: { trades: SerializedTrade[] }) 
 
                 {isExpanded && (
                   <div className="border-b border-border-light bg-bg-primary">
-                    <TradeDetailPanel trade={trade} />
+                    <TradeDetailPanel key={trade.id} trade={trade} onTradeUpdated={updateTrade} onDirtyChange={setDirty} />
                   </div>
                 )}
               </div>
             );
           })}
+        </div>
         </div>
       )}
     </section>
