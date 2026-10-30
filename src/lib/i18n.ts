@@ -32,7 +32,7 @@ export const dictionaries = {
       previousTrade: "上一笔", nextTrade: "下一笔", reviewPosition: "当前筛选内第 {index} / {total} 笔",
       unsaved: "有未保存内容或正在保存，请先保存或取消编辑，再切换交易或筛选。",
       missingTrade: "目标交易不在当前筛选结果中，可清除筛选或切换账户、日期范围后查找。",
-      drillDown: "查看对应交易", dayTrades: "查看 {date} 的交易",
+      dayTrades: "查看 {date} 的交易",
     },
     common: {
       appName: "合约交易复盘",
@@ -423,6 +423,16 @@ export const dictionaries = {
       trades: "交易数",
       lastSync: "上次同步",
     },
+    shell: {
+      dataSource: "数据源",
+      allExchanges: "全部交易所",
+      noExchange: "尚未连接交易所",
+      tradesUnit: "笔",
+      balance: "账户余额",
+      tradeCount: "交易笔数",
+      viewAll: "查看全部交易",
+      sidePnl: "多 {long} / 空 {short}",
+    },
   },
   en: {
     accounting: {
@@ -443,7 +453,7 @@ export const dictionaries = {
       previousTrade: "Previous trade", nextTrade: "Next trade", reviewPosition: "Trade {index} of {total} in this selection",
       unsaved: "Changes are unsaved or saving. Save or cancel editing before switching trades or filters.",
       missingTrade: "The requested trade is outside this selection. Clear filters or change account and date range to find it.",
-      drillDown: "View matching trades", dayTrades: "View trades on {date}",
+      dayTrades: "View trades on {date}",
     },
     common: {
       appName: "Crypto Futures",
@@ -833,6 +843,16 @@ export const dictionaries = {
       deleteConfirm: "Delete this exchange and all associated trades?",
       trades: "Trades",
       lastSync: "Last Sync",
+    },
+    shell: {
+      dataSource: "Data source",
+      allExchanges: "All exchanges",
+      noExchange: "No exchange connected",
+      tradesUnit: "trades",
+      balance: "Account balance",
+      tradeCount: "Trades",
+      viewAll: "View all trades",
+      sidePnl: "Long {long} / Short {short}",
     },
   },
 } as const;

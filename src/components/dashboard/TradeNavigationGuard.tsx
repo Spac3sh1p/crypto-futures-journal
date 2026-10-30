@@ -17,7 +17,7 @@ export function TradeNavigationGuard({ children }: { children: ReactNode }) {
   return (
     <NavigationContext.Provider value={{ setBlocked, requestNavigation }}>
       {children}
-      {blocked && showHint && <div role="alert" className="fixed bottom-6 right-6 z-50 max-w-md rounded-lg border border-yellow/40 bg-bg-primary p-4 text-sm text-yellow shadow-xl">{dictionary.tradeFilters.unsaved}</div>}
+      {blocked && showHint && <div role="alert" className="fixed bottom-6 right-6 z-50 max-w-md rounded-md border border-accent/40 bg-surface-2 p-4 text-[13px] text-accent">{dictionary.tradeFilters.unsaved}</div>}
     </NavigationContext.Provider>
   );
 }

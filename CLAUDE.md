@@ -16,8 +16,8 @@
 - 夏普比 = 日收益率均值 / 标准差 × √365（无风险利率取 0，日收益 = 当日交易 PnL / 净入金，样本不足或波动为 0 时显示 `--`）；TOP10 收益率 = 品种净盈亏 / 品种总开仓价值。
 - 余额卡（替换了“今日盈亏”）实时读交易所 USDT 余额，不落库。左侧“数据源”用 `exchangeId` URL 参数切换交易所，各页之间保留该参数。
 - 鉴权与加密：API 路由走 `src/lib/auth.ts` 的 `requireAuth()`（HMAC 会话 cookie），apiSecret 用 AES-256-GCM 加密（`src/lib/crypto.ts`，`ENCRYPTION_KEY`，其余变量名见 `.env.local.example`）。生产环境缺变量时 fail closed，开发环境缺 key 会退回 `plain:` 明文存储。
-- 界面默认中文，顶栏有“中/EN”切换（`src/lib/i18n.ts`）。字体本地自托管 MiSans（界面）+ JetBrains Mono（数字），用 `@font-face` 写、不依赖 Google Fonts（以前没网时 build 会失败）；MiSans 要求署名，见 `src/app/fonts/MiSans-README.md`。
-- 视觉走“复盘工作台”式高级暗色，不要 cyberpunk 光效。总览优先、低密度，细节放二级视图，Mini K 线留在交易行展开里；用户主要用 PC，移动端优先级低。
+- 界面默认中文，顶栏有“中/EN”切换（`src/lib/i18n.ts`）。字体本地自托管 IBM Plex Sans（拉丁与数字，OFL），中文走系统字体；用 `@font-face` 写、不依赖 Google Fonts（以前没网时 build 会失败）。2026-10-30 之前用的是 MiSans + JetBrains Mono，已按用户要求参考 Binance 换掉。
+- 视觉走“复盘工作台”式高级暗色，不要 cyberpunk 光效，不要渐变和投影。配色为用户选定的「青」（青黑底、蓝灰面板），总览优先、低密度，细节放二级视图，Mini K 线留在交易行展开里；用户主要用 PC，移动端优先级低。
 - 交易表对齐：交易对左对齐，类型/时间/持仓时间居中，资金费/手续费/盈亏/盈亏率右对齐，时间只显示到分钟。资金费和手续费字色弱化，已实现盈亏和盈亏率加粗突出。
 - 月度复盘只用月份选择器，不做最佳/最差周；“最佳一笔/最差一笔”可点击跳到对应交易；没有交易的日期留白。
 - 2026-06-06 按用户要求取消 V1–V4 版本区分，合并成单一主线。
@@ -28,7 +28,7 @@
 - 增量同步只从 `lastSync` 开始拉，会把“开仓在上次同步前、平仓在之后”的仓位导成方向错误、持仓 0 秒的假交易 → Binance 回看 90 天成交重建仓位，Bybit 用 execution 修正开仓时间；`lastSync` 只在完全成功时推进。
 - Bybit execution 查询跨度不能超过 7 天（retCode 10001）→ 按 7 天分段，并按 execution id 去重。close-pnl 不带手续费，要从 execution 汇总；Bybit K 线要单独接它的公共接口（返回倒序）。
 - 同步接口曾在 partial/error 时仍返回 `success: true`，设置页因此误报成功 → 已改为返回 `success:false` 并带上 status/errors。
-- 交易表有两套组件：总览“最近交易”用 `src/components/overview/OverviewRecentTrades.tsx`，`?view=trades` 用 `src/components/dashboard/TradeHistoryTable.tsx`；改列或样式要两处一起改。
+- 交易表的行与表头在 `src/components/trades/TradeRow.tsx` 里共用：总览“最近交易”（`overview/RecentTrades.tsx`）和 `?view=trades`（`trades/TradeHistoryTable.tsx`）都用它，改列只改一处。
 - ccxt 打包报 protobufjs 错 → `next.config.ts` 加 `serverExternalPackages: ["ccxt"]`；lint 扫到 Prisma 生成代码 → eslint 忽略 `src/generated/prisma/**`（2026-05 初建时）。
 - Recharts `ResponsiveContainer height="100%"` 在 SSR 时报 width/height -1 → 改成固定数值高度（`OverviewCurveChart.tsx`，有 `tests/recharts-container.test.tsx` 覆盖）。
 - “资金费率”列实际显示的是 fundingFee 金额，不是费率百分比；要显示费率得另定口径。
@@ -39,7 +39,8 @@
 - 评审的第 3 优先级没做：待复盘列表、策略/失误分类等（09-05 已补部分月历/分析跳转，细节以 HANDOFF 为准）。“本期结论”仍是静态占位，规则引擎要先和用户讨论（此前方案是先用可测试的规则引擎；接外部 AI 润色涉及隐私，不能默认做）。
 - 安全遗留（2026-06-08 Codex Security）：dashboard 页面不经 `requireAuth()` 直接读库，未登录也能看数据；`.env` 没有 `ENCRYPTION_KEY`，库里的 apiSecret 是 `plain:` 明文；dev server 监听全部网卡。
   - 2026-10-30 已在分支 `fix/dashboard-auth-and-secrets` 修复：`dashboard/layout.tsx` 统一调 `isAuthenticated()` 未登录跳 `/login`（新增登录页 `src/app/login` + `components/auth/LoginForm.tsx`）；`.env` 补了 `APP_PASSWORD`/`AUTH_SECRET`/`ENCRYPTION_KEY`，并用 `scripts/reencrypt-secrets.ts` 把 2 条 apiSecret 重新加密为 `enc:`（之后 VACUUM 清掉了旧页）；`npm run dev` 改为 `-H 127.0.0.1`。`isAuthenticated()` 在开发模式下若 `APP_PASSWORD`/`AUTH_SECRET` 缺失会直接放行、生产构建则 fail closed。用户同日决定本地自用不要登录：已从 `.env` 删掉这两项（`ENCRYPTION_KEY` 保留，不能删），dev 下免登录，登录页代码保留给公开版本；要恢复登录就把两项加回去并重启。交易所 key 是否轮换由用户决定，未做。
-- 总览每次渲染都实时请求余额（每个交易所 4 秒超时），可能拖慢页面；曾建议加缓存，是否已改未验证。
+- 2026-10-30 UI 改版已替换到正式页面（分支 `claude/brave-lamport-nn6233`）：旧的 `/preview` 路由、v1 组件、MiSans/JetBrains Mono/Orbitron/Exo 字体文件、旧令牌（`--bg-primary`、`.trading-panel`、`.terminal-label` 等）全部删除。现在只有一套主题：`globals.css` 里 `--ui-*` 变量（canvas/surface/surface-2/surface-3/line/line-strong/ink/ink-2/ink-3/accent/profit/loss），Tailwind 类名 `bg-surface`、`text-ink-2`、`text-profit` 等；通用样式类 `ui-num`（表格数字）、`ui-figure`（大数字）、`ui-segmented`、`ui-button`/`ui-button-primary`、`ui-field`、`ui-link`、`ui-row`、`ui-tint-profit/loss`。字体：拉丁与数字用自托管 IBM Plex Sans（OFL，`src/app/fonts/`），中文走系统字体（微软雅黑/苹方），不再用等宽字体。组件目录：`components/dashboard/`（Sidebar、TopBar、AccountingNotice、MiniKlineChart、TradeNavigationGuard）、`components/overview/`（OverviewDashboard、PerformancePanel、EquityChart、SymbolTop10Table、PeriodReviewPanel、RecentTrades）、`components/trades/`（TradeHistoryTable、TradeRow、TradeDetailPanel）、`components/analytics/`、`components/calendar/`、`components/settings/`、`components/ui/`（Panel、Segmented、Bars）。总览数据装配在 `lib/dashboard/overview-model.ts`，`SerializedTrade` 类型在 `lib/dashboard/serialized-trade.ts`，图表刻度在 `lib/dashboard/chart-ticks.ts`，持仓时长分组标签在 `lib/dashboard/analytics-labels.ts`。设计决策：去掉所有渐变与投影，层级只靠面色和细线；大数字用比例数字半粗，表格数字 `tabular-nums` 对齐；颜色只表达盈亏和当前选中；标签不全大写、无字距；分析页多空胜率用细条计量而非环图，时段轴标签「0–2时」、提示框「00:00–02:00」。项目技能装在 `.claude/skills/`（frontend-design、design-critique、design-system、accessibility-review、ux-copy、design-handoff）。
+- 余额卡（2026-10-30 起）：`src/lib/exchange/balance.ts` 常驻复用 ccxt 实例（首次请求要拉整个合约列表，Binance/Bybit 各约 1.4 秒），余额按交易所缓存 60 秒、失败缓存 15 秒，并发渲染共用一次请求，缓存挂在 `globalThis` 上热更新不丢；顶栏「刷新」先调 server action `src/app/dashboard/actions.ts` 清缓存再 `router.refresh()`。总览不等余额：`components/overview/WalletBalance.tsx` 是独立的异步服务端组件，`OverviewDashboard` 用 Suspense 包着传进 `PerformancePanel` 的 `balance` 槽位，其余内容先出、余额后填（占位是静音色块，不写文字）。此前每次渲染都新建实例实时请求并整页等待，总览稳态要 2.4 秒。
 - 登录自启动：Windows 启动文件夹里的 `Crypto Futures Journal Dev.vbs` 调 `scripts/start-hidden-dev.ps1`，隐藏运行 `npm run dev`（端口 3000，`.next-dev.pid` 防重复启动，日志 `persistent-dev*.log`）。2026-06-04 遇到过 pid 文件指向残留进程的情况，没处理。
 - GitHub 仓库截至 2026-07-20 仍为私有：用户想公开，Codex 平台拒绝执行。当时扫了全部提交历史，没发现密钥（本机没装 Gitleaks/TruffleHog）。
 - Hyperliquid 同步从没用真实账户验证过，可能还是 fill 级导入。顶栏“刷新”最初只做 `router.refresh()`（拉交易所数据要去 Settings 点 Sync），之后是否改过未验证。

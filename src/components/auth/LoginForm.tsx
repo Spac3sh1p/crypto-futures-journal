@@ -51,20 +51,20 @@ export function LoginForm({ configured }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-sm rounded-xl border border-border bg-bg-secondary p-6 shadow-lg"
+      className="w-full max-w-sm rounded-md border border-line-strong bg-surface p-6"
     >
-      <h1 className="text-lg font-semibold text-text-primary">Crypto Futures Journal</h1>
-      <p className="mt-1 text-sm text-text-muted">请输入访问密码 / Enter the access password</p>
+      <h1 className="text-[16px] font-semibold text-ink">Crypto Futures Journal</h1>
+      <p className="mt-1 text-[13px] text-ink-3">请输入访问密码 / Enter the access password</p>
 
       {!configured ? (
-        <p className="mt-4 rounded-md border border-border-light bg-bg-tertiary p-3 text-sm text-yellow">
+        <p className="mt-4 rounded-md border border-line-strong bg-surface-2 p-3 text-[13px] text-accent">
           服务端尚未配置 APP_PASSWORD 与 AUTH_SECRET，请在 .env 中设置后重启。
           <br />
           APP_PASSWORD and AUTH_SECRET are not set on the server.
         </p>
       ) : null}
 
-      <label className="mt-5 block text-sm text-text-secondary" htmlFor="password">
+      <label className="mt-5 block text-[13px] text-ink-2" htmlFor="password">
         密码 / Password
       </label>
       <input
@@ -76,15 +76,15 @@ export function LoginForm({ configured }: Props) {
         required
         value={password}
         onChange={(event) => setPassword(event.target.value)}
-        className="mt-1 w-full rounded-md border border-border bg-bg-primary px-3 py-2 text-text-primary outline-none focus:border-text-muted"
+        className="ui-field mt-1 h-9 w-full"
       />
 
-      {error ? <p className="mt-3 text-sm text-red">{error}</p> : null}
+      {error ? <p className="mt-3 text-[13px] text-loss">{error}</p> : null}
 
       <button
         type="submit"
         disabled={submitting || !configured}
-        className="mt-5 w-full rounded-md border border-border bg-bg-hover px-3 py-2 text-sm font-medium text-text-primary transition-colors hover:border-text-muted disabled:cursor-not-allowed disabled:opacity-50"
+        className="ui-button ui-button-primary mt-5 h-9 w-full justify-center"
       >
         {submitting ? "登录中… / Signing in…" : "登录 / Sign in"}
       </button>

@@ -1,43 +1,35 @@
 "use client";
 
-import { useTradeNavigation } from "./TradeNavigationGuard";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { LanguageToggle } from "@/components/i18n/LanguageToggle";
+import { useTradeNavigation } from "@/components/dashboard/TradeNavigationGuard";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { normalizeMonthParam } from "@/lib/dashboard/calendar-transforms";
+import { LanguageToggle } from "@/components/i18n/LanguageToggle";
+import { refreshWalletBalance } from "@/app/dashboard/actions";
 
-const ranges = [
-  { id: "7d" },
-  { id: "30d" },
-  { id: "90d" },
-  { id: "all" },
-];
+const RANGES = ["7d", "30d", "90d", "all"] as const;
 
-function formatDate(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
 }
 
-function formatMonth(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
+function formatDate(value: Date): string {
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
 }
 
 function shiftMonth(month: string, delta: number): string {
   const [year, monthNumber] = month.split("-").map(Number);
-  return formatMonth(new Date(year, monthNumber - 1 + delta, 1));
+  const next = new Date(year, monthNumber - 1 + delta, 1);
+  return `${next.getFullYear()}-${pad(next.getMonth() + 1)}`;
 }
 
-function rangeLabel(activeRange: string, locale: "zh" | "en"): string {
-  if (activeRange === "all") return locale === "zh" ? "全部历史" : "All history";
+function rangeSpan(activeRange: string): string | null {
+  if (activeRange === "all") return null;
   const days = activeRange === "7d" ? 7 : activeRange === "90d" ? 90 : 30;
   const end = new Date();
   const start = new Date(end);
   start.setDate(end.getDate() - days + 1);
-  return `${formatDate(start)}  ~  ${formatDate(end)}`;
+  return `${formatDate(start)} – ${formatDate(end)}`;
 }
 
 export function TopBar() {
@@ -47,128 +39,104 @@ export function TopBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeRange = searchParams.get("range") || "30d";
-  const isCalendarPage = pathname.includes("/calendar");
+  const isCalendar = pathname === "/dashboard/calendar";
+  const isSettings = pathname === "/dashboard/settings";
+  const isTradesView = pathname === "/dashboard/performance" && searchParams.get("view") === "trades";
   const activeMonth = normalizeMonthParam(searchParams.get("month") ?? undefined);
 
-  const pageMeta = isCalendarPage
-    ? {
-        title: locale === "zh" ? "月度复盘" : "Monthly Review",
-        subtitle: locale === "zh" ? "按月份查看每日交易结果" : "Daily trade results by month",
-      }
-    : pathname.includes("/analytics")
-    ? dictionary.topBar.pages.analytics
-    : pathname.includes("/settings")
-      ? dictionary.topBar.pages.settings
-      : pathname.includes("/performance") && searchParams.get("view") === "trades"
-        ? dictionary.topBar.pages.trades
-      : dictionary.topBar.pages.performance;
+  const title = isCalendar
+    ? (locale === "zh" ? "月度复盘" : "Monthly Review")
+    : pathname === "/dashboard/analytics"
+      ? dictionary.topBar.pages.analytics.title
+      : isSettings
+        ? dictionary.topBar.pages.settings.title
+        : isTradesView
+          ? dictionary.topBar.pages.trades.title
+          : dictionary.topBar.pages.performance.title;
+  const showRange = !isCalendar && !isSettings;
 
   function handleRangeChange(range: string) {
     if (!requestNavigation()) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("range", range);
-    params.delete("month");
-    params.delete("page");
-    params.delete("tradeId");
-    params.delete("exitDate");
+    ["month", "page", "tradeId", "exitDate"].forEach((key) => params.delete(key));
     router.push(`?${params.toString()}`);
   }
 
   function handleMonthChange(month: string) {
-    if (!requestNavigation()) return;
-    if (!month) return;
+    if (!requestNavigation() || !month) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", normalizeMonthParam(month));
     params.delete("range");
     router.push(`?${params.toString()}`);
   }
 
-  function handleRefresh() {
+  async function handleRefresh() {
     if (!requestNavigation()) return;
+    try {
+      await refreshWalletBalance();
+    } catch {
+      // 清缓存失败不影响刷新本身
+    }
     router.refresh();
   }
 
+  const span = rangeSpan(activeRange);
+
   return (
-    <div className="flex flex-col gap-3 border-b border-border bg-[rgba(8,17,29,0.88)] px-4 py-3 backdrop-blur lg:flex-row lg:items-center lg:justify-between lg:px-6">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        {isCalendarPage ? (
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-bg-tertiary/90 p-1">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-line-strong bg-canvas px-6">
+      <div className="flex min-w-0 items-center gap-4">
+        <h1 className="shrink-0 text-[15px] font-semibold text-ink">{title}</h1>
+        {isCalendar && (
+          <div className="flex items-center gap-1">
             <button
               type="button"
               aria-label={locale === "zh" ? "上个月" : "Previous month"}
               onClick={() => handleMonthChange(shiftMonth(activeMonth, -1))}
-              className="grid h-8 w-8 place-items-center rounded-md text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
+              className="ui-button h-8 w-8 justify-center px-0"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
             <input
               type="month"
               value={activeMonth}
               onChange={(event) => handleMonthChange(event.target.value)}
               aria-label={locale === "zh" ? "选择月份" : "Select month"}
-              className="h-8 min-w-[132px] rounded-md border border-border-light bg-bg-primary px-3 font-mono text-xs font-semibold text-text-primary outline-none transition-colors hover:border-yellow/40 focus:border-yellow/60"
+              className="ui-field ui-num min-w-[132px]"
             />
             <button
               type="button"
               aria-label={locale === "zh" ? "下个月" : "Next month"}
               onClick={() => handleMonthChange(shiftMonth(activeMonth, 1))}
-              className="grid h-8 w-8 place-items-center rounded-md text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
+              className="ui-button h-8 w-8 justify-center px-0"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
           </div>
-        ) : (
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-bg-tertiary/90 p-1">
-            {ranges.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => handleRangeChange(r.id)}
-              aria-pressed={activeRange === r.id}
-              className={`min-w-12 rounded-md px-3 py-1.5 text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60 ${
-                activeRange === r.id
-                  ? "bg-yellow text-[#08111D] shadow-[0_0_18px_rgba(245,179,26,0.18)]"
-                  : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-              }`}
-            >
-              {dictionary.topBar.ranges[r.id as keyof typeof dictionary.topBar.ranges]}
-            </button>
-            ))}
-          </div>
         )}
-        {!isCalendarPage && (
-          <div className="inline-flex items-center gap-3 rounded-lg border border-border bg-bg-tertiary/90 px-3 py-2 font-mono text-xs font-medium text-text-secondary">
-            <span>{rangeLabel(activeRange, locale)}</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-text-muted">
-              <path d="M7 3v3M17 3v3M4 9h16M6 5h12a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
+        {showRange && (
+          <>
+            <div className="ui-segmented" role="group" aria-label={dictionary.topBar.pages.performance.title}>
+              {RANGES.map((range) => (
+                <button key={range} type="button" aria-pressed={activeRange === range} onClick={() => handleRangeChange(range)}>
+                  {dictionary.topBar.ranges[range]}
+                </button>
+              ))}
+            </div>
+            {span && <span className="ui-num hidden text-[12px] text-ink-3 lg:inline">{span}</span>}
+          </>
         )}
-        <div className="hidden min-w-0 text-xs font-medium text-text-muted xl:block">
-          <span className="text-text-secondary">{pageMeta.title}</span>
-          <span className="mx-2 text-border">/</span>
-          {pageMeta.subtitle}
-        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          aria-label={dictionary.topBar.refreshAria}
-          onClick={handleRefresh}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-tertiary/90 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:border-yellow/40 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow/60"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <div className="flex shrink-0 items-center gap-2">
+        <LanguageToggle />
+        <button type="button" aria-label={dictionary.topBar.refreshAria} onClick={handleRefresh} className="ui-button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M20 12a8 8 0 01-13.66 5.66M4 12A8 8 0 0117.66 6.34M18 3v4h-4M6 21v-4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {dictionary.topBar.refresh}
         </button>
-        <LanguageToggle />
       </div>
-    </div>
+    </header>
   );
 }

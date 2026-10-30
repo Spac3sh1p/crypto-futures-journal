@@ -86,7 +86,7 @@ try {
     const metrics = await page.evaluate(() => {
       const root = document.documentElement;
       const chart = document.querySelector(
-        'svg[role="img"][aria-label*="candlestick"], svg[role="img"][aria-label*="K"]'
+        'svg[role="img"][aria-label*="走势复盘"], svg[role="img"][aria-label*="price path"]'
       );
       const chartBox = chart?.getBoundingClientRect();
       const loadingOrEmpty = document.querySelector('[role="status"]');

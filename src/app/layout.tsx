@@ -17,7 +17,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale === "zh" ? "zh-CN" : "en"} className="h-full">
-      <body className="h-full bg-bg-primary text-text-primary font-sans antialiased">
+      <body className="h-full">
         <LanguageProvider initialLocale={locale}>
           {children}
         </LanguageProvider>

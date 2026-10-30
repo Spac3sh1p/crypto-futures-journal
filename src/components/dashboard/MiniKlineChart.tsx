@@ -42,15 +42,50 @@ const PLOT_LEFT = 18;
 const PLOT_RIGHT = 92;
 const PLOT_TOP = 18;
 const PLOT_BOTTOM = 26;
-const UP_COLOR = "#22ab94";
-const DOWN_COLOR = "#ef5350";
-const LINE_COLOR = "#7db4ff";
-const GRID_MAJOR = "#263247";
-const GRID_MINOR = "#182235";
-const CHART_BG = "#080f1b";
-const PRICE_SCALE_BG = "#0c1422";
-const AXIS_TEXT = "#7b8798";
 const SUPPORTED_KLINE_EXCHANGES = new Set(["binance", "bybit"]);
+
+interface KlinePalette {
+  up: string;
+  down: string;
+  line: string;
+  gridMajor: string;
+  gridMinor: string;
+  chartBg: string;
+  scaleBg: string;
+  axisText: string;
+  lastPriceLine: string;
+  lastPriceBg: string;
+  lastPriceStroke: string;
+  lastPriceText: string;
+  markerText: string;
+  headerClass: string;
+  chipClass: string;
+  placeholderClass: string;
+  frameClass: string;
+  textClass: string;
+}
+
+// 颜色全部读界面令牌，随主题变化；价格线用中性色，只有买卖标记带盈亏色。
+const PALETTE: KlinePalette = {
+  up: "var(--ui-profit)",
+  down: "var(--ui-loss)",
+  line: "var(--ui-ink-2)",
+  gridMajor: "var(--ui-line-strong)",
+  gridMinor: "var(--ui-line)",
+  chartBg: "var(--ui-canvas)",
+  scaleBg: "var(--ui-surface)",
+  axisText: "var(--ui-ink-3)",
+  lastPriceLine: "var(--ui-ink-3)",
+  lastPriceBg: "var(--ui-surface-2)",
+  lastPriceStroke: "var(--ui-line-strong)",
+  lastPriceText: "var(--ui-ink)",
+  markerText: "#0b0b0b",
+  headerClass: "rounded-md border border-line-strong bg-surface",
+  chipClass: "ui-num rounded-sm bg-surface-2 px-2 py-1 text-[11px] text-ink-2",
+  placeholderClass: "rounded-md border border-line-strong bg-canvas",
+  frameClass: "rounded-md border border-line-strong",
+  textClass: "ui-num",
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -82,14 +117,16 @@ function MarkerShape({
   y,
   plotTop,
   plotBottom,
+  palette,
 }: {
   label: "B" | "S";
   x: number;
   y: number;
   plotTop: number;
   plotBottom: number;
+  palette: KlinePalette;
 }) {
-  const fill = label === "B" ? UP_COLOR : DOWN_COLOR;
+  const fill = label === "B" ? palette.up : palette.down;
   const bubbleY = clamp(y + (label === "B" ? 10 : -28), plotTop + 2, plotBottom - 20);
   const connectorEndY = label === "B" ? bubbleY : bubbleY + 18;
 
@@ -109,7 +146,8 @@ function MarkerShape({
         x={x}
         y={bubbleY + 12.5}
         textAnchor="middle"
-        className="fill-[#061018] font-mono text-[10px] font-bold"
+        fill={palette.markerText}
+        className={`${palette.textClass} text-[10px] font-bold`}
       >
         {label}
       </text>
@@ -127,6 +165,7 @@ export function MiniKlineChart({
   side,
 }: MiniKlineChartProps) {
   const { dictionary, locale } = useI18n();
+  const palette = PALETTE;
   const text = dictionary.miniKline;
   const rawSvgId = useId().replace(/:/g, "");
   const clipId = `mini-kline-clip-${rawSvgId}`;
@@ -304,33 +343,33 @@ export function MiniKlineChart({
 
   return (
     <div className="relative">
-      <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-[#263448] bg-[#0d1422] px-3 py-2">
-        <span className="font-mono text-xs font-semibold text-text-primary">
+      <div className={`mb-2 flex flex-wrap items-center gap-2 px-3 py-2 ${palette.headerClass}`}>
+        <span className={`${palette.textClass} text-xs font-semibold text-ink`}>
           {symbol}
         </span>
-        <span className="text-xs font-medium text-text-muted">/</span>
-        <span className="text-xs font-medium text-text-secondary">
+        <span className="text-xs font-medium text-ink-3">/</span>
+        <span className="text-xs font-medium text-ink-2">
           {activeState.interval || text.real} / {text.futures}
         </span>
         {chart && (
           <>
-            <span className="hidden text-xs font-medium text-text-muted sm:inline">/</span>
-            <span className="text-xs font-medium text-text-secondary">
+            <span className="hidden text-xs font-medium text-ink-3 sm:inline">/</span>
+            <span className="text-xs font-medium text-ink-2">
               {text.beforeContext} {formatDuration(chart.beforeSeconds, locale)} · {text.holdingContext} {formatDuration(chart.holdSeconds, locale)} · {text.afterContext} {formatDuration(chart.afterSeconds, locale)}
             </span>
           </>
         )}
         {chart && (
-          <span className="flex w-full flex-wrap items-center gap-1.5 text-xs font-medium text-text-secondary sm:ml-auto sm:w-auto">
+          <span className="flex w-full flex-wrap items-center gap-1.5 text-xs font-medium text-ink-2 sm:ml-auto sm:w-auto">
             <span
               title={template(text.mfeTitle, { price: formatChartPrice(chart.mfePrice) })}
-              className="rounded-md bg-[#121b2b] px-2 py-1 font-mono text-[10px] font-semibold text-text-secondary ring-1 ring-[#27364b]"
+              className={palette.chipClass}
             >
               MFE {formatExcursionPercent(chart.mfePercent)}
             </span>
             <span
               title={template(text.maeTitle, { price: formatChartPrice(chart.maePrice) })}
-              className="rounded-md bg-[#121b2b] px-2 py-1 font-mono text-[10px] font-semibold text-text-secondary ring-1 ring-[#27364b]"
+              className={palette.chipClass}
             >
               MAE {formatExcursionPercent(chart.maePercent)}
             </span>
@@ -339,14 +378,14 @@ export function MiniKlineChart({
       </div>
 
       {!chart ? (
-        <div className={`flex h-[276px] w-full items-center justify-center rounded-lg border border-[#263448] bg-[#0b111d] ${activeState.loading ? "animate-pulse" : ""}`}>
+        <div className={`flex h-[276px] w-full items-center justify-center ${palette.placeholderClass} ${activeState.loading ? "animate-pulse" : ""}`}>
           <div className="text-center">
-            <div className="text-xs font-semibold text-text-secondary" role="status">{placeholderTitle}</div>
-            <div className="mt-1 max-w-md text-xs font-medium text-text-muted">{placeholderMessage}</div>
+            <div className="text-xs font-semibold text-ink-2" role="status">{placeholderTitle}</div>
+            <div className="mt-1 max-w-md text-xs font-medium text-ink-3">{placeholderMessage}</div>
           </div>
         </div>
       ) : (
-        <div className="relative overflow-hidden rounded-lg border border-[#263448]" style={{ backgroundColor: CHART_BG }}>
+        <div className={`relative overflow-hidden ${palette.frameClass}`} style={{ backgroundColor: palette.chartBg }}>
           <svg
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
             className="h-[276px] w-full overflow-visible"
@@ -369,17 +408,17 @@ export function MiniKlineChart({
                 />
               </clipPath>
               <linearGradient id={lineFillId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={LINE_COLOR} stopOpacity="0.22" />
-                <stop offset="100%" stopColor={LINE_COLOR} stopOpacity="0" />
+                <stop offset="0%" stopColor={palette.line} stopOpacity="0.16" />
+                <stop offset="100%" stopColor={palette.line} stopOpacity="0" />
               </linearGradient>
             </defs>
-            <rect x="0" y="0" width={CHART_WIDTH} height={CHART_HEIGHT} fill={CHART_BG} />
+            <rect x="0" y="0" width={CHART_WIDTH} height={CHART_HEIGHT} fill={palette.chartBg} />
             <rect
               x={chart.plotRightX}
               y="0"
               width={PLOT_RIGHT}
               height={CHART_HEIGHT}
-              fill={PRICE_SCALE_BG}
+              fill={palette.scaleBg}
             />
             <rect
               x={PLOT_LEFT}
@@ -393,7 +432,7 @@ export function MiniKlineChart({
               y={PLOT_TOP}
               width={Math.max(Math.abs(chart.exitX - chart.entryX), 2)}
               height={chart.plotHeight}
-              fill={side === "Long" ? UP_COLOR : DOWN_COLOR}
+              fill={side === "Long" ? palette.up : palette.down}
               opacity="0.075"
             />
             {chart.xGridTicks.map((x) => (
@@ -403,7 +442,7 @@ export function MiniKlineChart({
                 x2={x}
                 y1={PLOT_TOP}
                 y2={CHART_HEIGHT - PLOT_BOTTOM}
-                stroke={GRID_MAJOR}
+                stroke={palette.gridMajor}
                 strokeWidth="1"
                 strokeOpacity="0.34"
               />
@@ -415,7 +454,7 @@ export function MiniKlineChart({
                 x2={chart.plotRightX}
                 y1={chart.yForPrice(tick)}
                 y2={chart.yForPrice(tick)}
-                stroke={GRID_MINOR}
+                stroke={palette.gridMinor}
                 strokeWidth="1"
                 strokeOpacity="0.5"
               />
@@ -427,7 +466,7 @@ export function MiniKlineChart({
                   x2={chart.plotRightX}
                   y1={chart.yForPrice(tick)}
                   y2={chart.yForPrice(tick)}
-                  stroke={GRID_MAJOR}
+                  stroke={palette.gridMajor}
                   strokeWidth="1"
                   strokeOpacity="0.72"
                 />
@@ -435,8 +474,8 @@ export function MiniKlineChart({
                   x={chart.plotRightX + 12}
                   y={chart.yForPrice(tick) + 3}
                   textAnchor="start"
-                  fill={AXIS_TEXT}
-                  className="font-mono text-[10px] font-medium"
+                  fill={palette.axisText}
+                  className={`${palette.textClass} text-[10px] font-medium`}
                 >
                   {formatChartPrice(tick)}
                 </text>
@@ -447,7 +486,7 @@ export function MiniKlineChart({
               x2={chart.plotRightX}
               y1={chart.yForPrice(chart.lastClose)}
               y2={chart.yForPrice(chart.lastClose)}
-              stroke="#7b8798"
+              stroke={palette.lastPriceLine}
               strokeDasharray="2 5"
               strokeOpacity="0.35"
               strokeWidth="1"
@@ -457,7 +496,7 @@ export function MiniKlineChart({
               x2={chart.entryX}
               y1={PLOT_TOP}
               y2={CHART_HEIGHT - PLOT_BOTTOM}
-              stroke={entryMarker === "B" ? UP_COLOR : DOWN_COLOR}
+              stroke={entryMarker === "B" ? palette.up : palette.down}
               strokeDasharray="3 6"
               strokeOpacity="0.52"
               strokeWidth="1"
@@ -467,7 +506,7 @@ export function MiniKlineChart({
               x2={chart.exitX}
               y1={PLOT_TOP}
               y2={CHART_HEIGHT - PLOT_BOTTOM}
-              stroke={exitMarker === "B" ? UP_COLOR : DOWN_COLOR}
+              stroke={exitMarker === "B" ? palette.up : palette.down}
               strokeDasharray="3 6"
               strokeOpacity="0.52"
               strokeWidth="1"
@@ -477,7 +516,7 @@ export function MiniKlineChart({
               <path
                 d={chart.linePath}
                 fill="none"
-                stroke={LINE_COLOR}
+                stroke={palette.line}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth="2"
@@ -488,7 +527,7 @@ export function MiniKlineChart({
                   cx={point.x}
                   cy={point.y}
                   r="1.35"
-                  fill={LINE_COLOR}
+                  fill={palette.line}
                   opacity="0.65"
                 />
               ))}
@@ -498,7 +537,7 @@ export function MiniKlineChart({
               x2={chart.plotRightX}
               y1="0"
               y2={CHART_HEIGHT}
-              stroke={GRID_MAJOR}
+              stroke={palette.gridMajor}
               strokeOpacity="0.9"
             />
             <rect
@@ -507,16 +546,16 @@ export function MiniKlineChart({
               width="72"
               height="16"
               rx="3"
-              fill="#111c2d"
-              stroke="#344155"
+              fill={palette.lastPriceBg}
+              stroke={palette.lastPriceStroke}
               strokeOpacity="0.9"
             />
             <text
               x={chart.plotRightX + 44}
               y={clamp(chart.yForPrice(chart.lastClose) + 3.5, PLOT_TOP + 11, CHART_HEIGHT - PLOT_BOTTOM - 4)}
               textAnchor="middle"
-              fill="#c4d0df"
-              className="font-mono text-[10px] font-semibold"
+              fill={palette.lastPriceText}
+              className={`${palette.textClass} text-[10px] font-semibold`}
             >
               {formatChartPrice(chart.lastClose)}
             </text>
@@ -526,6 +565,7 @@ export function MiniKlineChart({
               y={chart.yForPrice(entryPrice)}
               plotTop={PLOT_TOP}
               plotBottom={CHART_HEIGHT - PLOT_BOTTOM}
+              palette={palette}
             />
             <MarkerShape
               label={exitMarker}
@@ -533,6 +573,7 @@ export function MiniKlineChart({
               y={chart.yForPrice(exitPrice)}
               plotTop={PLOT_TOP}
               plotBottom={CHART_HEIGHT - PLOT_BOTTOM}
+              palette={palette}
             />
           </svg>
         </div>

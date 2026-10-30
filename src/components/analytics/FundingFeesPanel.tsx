@@ -1,7 +1,43 @@
 "use client";
 
-import type { FundingReport, FeesReport } from "@/lib/dashboard/analytics-transforms";
+import type { FeesReport, FundingReport } from "@/lib/dashboard/analytics-transforms";
 import { useI18n } from "@/components/i18n/LanguageProvider";
+import { Panel, PanelHeader } from "@/components/ui/Panel";
+
+interface FeeRow {
+  label: string;
+  value: string;
+  tone: "profit" | "loss" | "neutral";
+  emphasis?: boolean;
+}
+
+function FeeTable({ title, rows, typeLabel, totalLabel }: { title: string; rows: FeeRow[]; typeLabel: string; totalLabel: string }) {
+  return (
+    <Panel>
+      <PanelHeader size="sm" title={title} />
+      <table className="w-full">
+        <thead>
+          <tr>
+            <th className="px-4 py-2 text-left text-[12px] font-normal text-ink-3">{typeLabel}</th>
+            <th className="px-4 py-2 text-right text-[12px] font-normal text-ink-3">{totalLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label} className="border-t border-line">
+              <td className={`px-4 py-2 text-[13px] ${row.emphasis ? "font-medium text-ink" : "text-ink-2"}`}>{row.label}</td>
+              <td className={`ui-num px-4 py-2 text-right text-[13px] ${row.emphasis ? "font-medium" : ""} ${row.tone === "profit" ? "text-profit" : row.tone === "loss" ? "text-loss" : "text-ink"}`}>{row.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Panel>
+  );
+}
+
+function signed(value: number): string {
+  return `${value >= 0 ? "+" : "-"}$${Math.abs(value).toFixed(2)}`;
+}
 
 export function FundingFeesPanel({ funding, fees }: { funding: FundingReport; fees: FeesReport }) {
   const { dictionary } = useI18n();
@@ -10,64 +46,27 @@ export function FundingFeesPanel({ funding, fees }: { funding: FundingReport; fe
   const feesText = dictionary.analytics.fees;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Funding */}
-      <div className="trading-panel p-5">
-        <h3 className="text-sm font-semibold text-text-primary mb-4">{reports.fundingTitle}</h3>
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-2 text-text-muted">{dictionary.common.type}</th>
-              <th className="text-right py-2 text-text-muted">{dictionary.common.total}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b border-border-light">
-              <td className="py-2 text-green">{fundingText.received}</td>
-              <td className="py-2 text-right font-mono text-green">+${funding.received.toFixed(2)}</td>
-            </tr>
-            <tr className="border-b border-border-light">
-              <td className="py-2 text-red">{fundingText.paid}</td>
-              <td className="py-2 text-right font-mono text-red">-${funding.paid.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td className="py-2 text-text-primary font-medium">{fundingText.net}</td>
-              <td className={`py-2 text-right font-mono ${funding.net >= 0 ? "text-green" : "text-red"}`}>
-                {funding.net >= 0 ? "+" : "-"}${Math.abs(funding.net).toFixed(2)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Fees */}
-      <div className="trading-panel p-5">
-        <h3 className="text-sm font-semibold text-text-primary mb-4">{reports.feesTitle}</h3>
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-2 text-text-muted">{dictionary.common.type}</th>
-              <th className="text-right py-2 text-text-muted">{dictionary.common.total}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b border-border-light">
-              <td className="py-2 text-red">{feesText.taker}</td>
-              <td className="py-2 text-right font-mono text-red">-${fees.marketFeesPaid.toFixed(2)}</td>
-            </tr>
-            <tr className="border-b border-border-light">
-              <td className="py-2 text-green">{feesText.maker}</td>
-              <td className="py-2 text-right font-mono text-green">${fees.makerRebates.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td className="py-2 text-text-primary font-medium">{feesText.net}</td>
-              <td className={`py-2 text-right font-mono ${fees.net >= 0 ? "text-green" : "text-red"}`}>
-                {fees.net >= 0 ? "+" : "-"}${Math.abs(fees.net).toFixed(2)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <FeeTable
+        title={reports.fundingTitle}
+        typeLabel={dictionary.common.type}
+        totalLabel={dictionary.common.total}
+        rows={[
+          { label: fundingText.received, value: `+$${funding.received.toFixed(2)}`, tone: "profit" },
+          { label: fundingText.paid, value: `-$${funding.paid.toFixed(2)}`, tone: "loss" },
+          { label: fundingText.net, value: signed(funding.net), tone: funding.net >= 0 ? "profit" : "loss", emphasis: true },
+        ]}
+      />
+      <FeeTable
+        title={reports.feesTitle}
+        typeLabel={dictionary.common.type}
+        totalLabel={dictionary.common.total}
+        rows={[
+          { label: feesText.taker, value: `-$${fees.marketFeesPaid.toFixed(2)}`, tone: "loss" },
+          { label: feesText.maker, value: `$${fees.makerRebates.toFixed(2)}`, tone: "profit" },
+          { label: feesText.net, value: signed(fees.net), tone: fees.net >= 0 ? "profit" : "loss", emphasis: true },
+        ]}
+      />
     </div>
   );
 }
