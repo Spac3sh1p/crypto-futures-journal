@@ -1,3 +1,6 @@
+/** 预览版本号：每次推送新预览递增，方便在侧栏核对本机是否已更新。 */
+export const PREVIEW_BUILD = "v3";
+
 const DASHBOARD_PREFIX = "/dashboard";
 const PREVIEW_PREFIX = "/preview";
 

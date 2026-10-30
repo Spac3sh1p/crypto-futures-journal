@@ -3,7 +3,7 @@
 import { TradeNavigationLink as Link } from "@/components/dashboard/TradeNavigationGuard";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/i18n/LanguageProvider";
-import { toDashboardHref } from "@/lib/dashboard/preview-routing";
+import { PREVIEW_BUILD, toDashboardHref } from "@/lib/dashboard/preview-routing";
 
 interface SidebarExchange {
   id: string;
@@ -116,7 +116,7 @@ export function SidebarV2({ exchanges = [] }: { exchanges?: SidebarExchange[] })
       <div className="px-5 pb-3 pt-4">
         <div className="truncate text-[15px] font-semibold leading-6 text-ink">{dictionary.common.appName}</div>
         <div className="mt-0.5 text-[12px] leading-5 text-ink-3">
-          <span>{text.badge}</span>
+          <span>{text.badge} <span className="v2-num">{PREVIEW_BUILD}</span></span>
           <span className="mx-1.5">·</span>
           <a href={toDashboardHref(pathname, searchParams.toString())} className="v2-link text-ink-3 hover:text-ink">
             {text.backToCurrent}
