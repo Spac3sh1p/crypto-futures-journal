@@ -506,3 +506,12 @@ body {
     animation-duration: 0ms !important;
   }
 }
+
+/* 月历日期格的盈亏底色：在面板色上混入少量盈亏色，保持不透明 */
+.v2-tint-profit {
+  background: color-mix(in oklab, var(--v2-profit) 10%, var(--v2-surface));
+}
+
+.v2-tint-loss {
+  background: color-mix(in oklab, var(--v2-loss) 10%, var(--v2-surface));
+}
