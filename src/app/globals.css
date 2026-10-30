@@ -117,18 +117,18 @@
 
 /* ---------- v2 工作台令牌（/preview 预览使用；正式页面仍走上方 v1 变量） ---------- */
 :root {
-  /* 配色「青」：冷灰蓝底 + 浅蓝强调（用户 2026-10-30 选定） */
-  --v2-canvas: #0f1216;
-  --v2-surface: #161a20;
-  --v2-surface-2: #1d2229;
-  --v2-surface-3: #262c35;
-  --v2-line: #242a33;
-  --v2-line-strong: #323a45;
-  --v2-ink: #e7eaee;
-  --v2-ink-2: #aab2bd;
-  --v2-ink-3: #828b97;
-  --v2-accent: #9fb9e6;
-  --v2-accent-ink: #0f1216;
+  /* 配色「青」：青黑底、蓝灰面板、蓝色强调（用户 2026-10-30 选定；第一版蓝味太淡，已加深） */
+  --v2-canvas: #0b1117;
+  --v2-surface: #111923;
+  --v2-surface-2: #172230;
+  --v2-surface-3: #1e2b3b;
+  --v2-line: #1c2735;
+  --v2-line-strong: #293647;
+  --v2-ink: #e4ebf3;
+  --v2-ink-2: #a7b4c3;
+  --v2-ink-3: #8290a0;
+  --v2-accent: #7db4ff;
+  --v2-accent-ink: #0b1117;
   --v2-profit: #3fbf8f;
   --v2-loss: #ef6b6b;
   /* 字体参考 Binance：拉丁与数字用 IBM Plex Sans，中文走系统字体 */
