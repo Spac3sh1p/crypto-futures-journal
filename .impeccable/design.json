@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T00:00:00Z",
+  "title": "Design System: 合约交易复盘",
+  "extensions": {
+    "colorMeta": {
+      "canvas": { "role": "neutral", "displayName": "青黑桌面", "canonical": "#0b1117" },
+      "surface": { "role": "neutral", "displayName": "面板", "canonical": "#111923" },
+      "surface-2": { "role": "neutral", "displayName": "面板二级", "canonical": "#172230" },
+      "surface-3": { "role": "neutral", "displayName": "面板三级", "canonical": "#1e2b3b" },
+      "line": { "role": "neutral", "displayName": "细线", "canonical": "#1c2735" },
+      "line-strong": { "role": "neutral", "displayName": "强线", "canonical": "#293647" },
+      "ink": { "role": "neutral", "displayName": "正文", "canonical": "#e4ebf3" },
+      "ink-2": { "role": "neutral", "displayName": "次级文字", "canonical": "#a7b4c3" },
+      "ink-3": { "role": "neutral", "displayName": "弱化文字", "canonical": "#8290a0" },
+      "accent": { "role": "primary", "displayName": "浅天蓝", "canonical": "#7db4ff" },
+      "accent-ink": { "role": "primary", "displayName": "主按钮字色", "canonical": "#0b1117" },
+      "profit": { "role": "secondary", "displayName": "盈利绿", "canonical": "#3fbf8f" },
+      "loss": { "role": "secondary", "displayName": "亏损红", "canonical": "#ef6b6b" }
+    },
+    "typographyMeta": {
+      "figure": { "displayName": "Figure", "purpose": "总盈亏这一个大数字。" },
+      "figure-sm": { "displayName": "Figure-sm", "purpose": "统计格数值、月度盈亏。" },
+      "title": { "displayName": "Title", "purpose": "面板标题、页面标题。" },
+      "body": { "displayName": "Body", "purpose": "正文与导航。" },
+      "control": { "displayName": "Control", "purpose": "按钮、分段、下拉、输入框。" },
+      "num": { "displayName": "Num", "purpose": "表格数字与坐标轴刻度，tabular-nums。" },
+      "label": { "displayName": "Label", "purpose": "标签、单位、说明；不全大写、无字距。" }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "state", "value": "120ms ease", "purpose": "按钮、导航、表格行的颜色过渡。" },
+      { "name": "skeleton", "value": "1.4s ease-in-out infinite", "purpose": "加载占位块的透明度呼吸。" },
+      { "name": "progress", "value": "1s cubic-bezier(0.4, 0, 0.2, 1) infinite", "purpose": "顶栏导航进度条。" }
+    ],
+    "breakpoints": [
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "次级操作：导出、同步、取消。",
+      "html": "<button class=\"ds-btn\">导出 CSV</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--ui-line-strong, #293647); border-radius: 6px; background: var(--ui-surface, #111923); font-size: 13px; font-weight: 500; color: var(--ui-ink-2, #a7b4c3); transition: background-color 120ms ease, color 120ms ease; } .ds-btn:hover { background: var(--ui-surface-2, #172230); color: var(--ui-ink, #e4ebf3); } .ds-btn:focus-visible { outline: 2px solid rgba(125, 180, 255, 0.7); outline-offset: 2px; } .ds-btn:disabled { opacity: 0.4; cursor: not-allowed; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "每屏最多一个的主操作：连接交易所、重试。",
+      "html": "<button class=\"ds-btn-primary\">连接交易所</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid transparent; border-radius: 6px; background: var(--ui-accent, #7db4ff); font-size: 13px; font-weight: 500; color: var(--ui-accent-ink, #0b1117); transition: background-color 120ms ease; } .ds-btn-primary:hover { background: #8fbeff; } .ds-btn-primary:focus-visible { outline: 2px solid rgba(125, 180, 255, 0.7); outline-offset: 2px; }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "输入框与下拉框共用的外观。",
+      "html": "<input class=\"ds-field\" placeholder=\"请输入 API Key\" />",
+      "css": ".ds-field { height: 32px; padding: 0 10px; border: 1px solid var(--ui-line-strong, #293647); border-radius: 6px; background: var(--ui-canvas, #0b1117); font-size: 13px; color: var(--ui-ink, #e4ebf3); } .ds-field::placeholder { color: var(--ui-ink-3, #8290a0); } .ds-field:focus { outline: none; border-color: var(--ui-accent, #7db4ff); }"
+    },
+    {
+      "name": "Segmented",
+      "kind": "chip",
+      "refersTo": "segmented",
+      "description": "区间、语言、曲线口径切换。",
+      "html": "<div class=\"ds-segmented\" role=\"group\"><button type=\"button\" aria-pressed=\"false\">7天</button><button type=\"button\" aria-pressed=\"true\">30天</button><button type=\"button\" aria-pressed=\"false\">90天</button><button type=\"button\" aria-pressed=\"false\">全部</button></div>",
+      "css": ".ds-segmented { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--ui-line-strong, #293647); border-radius: 6px; background: var(--ui-surface, #111923); } .ds-segmented > button { border: 0; border-radius: 4px; padding: 4px 10px; background: transparent; font-size: 13px; font-weight: 500; color: var(--ui-ink-2, #a7b4c3); transition: background-color 120ms ease, color 120ms ease; } .ds-segmented > button:hover { color: var(--ui-ink, #e4ebf3); } .ds-segmented > button[aria-pressed=\"true\"] { background: var(--ui-surface-3, #1e2b3b); color: var(--ui-ink, #e4ebf3); } .ds-segmented > button:focus-visible { outline: 2px solid rgba(125, 180, 255, 0.7); outline-offset: 2px; }"
+    },
+    {
+      "name": "Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "侧栏导航项，当前页图标换成强调色。",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\" aria-current=\"page\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 17l5-6 4 3 5-7 4 4\"/></svg><span>交易表现</span></a><a href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 20V11M12 20V4M19 20v-7\"/></svg><span>交易分析</span></a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 2px; width: 208px; background: var(--ui-canvas, #0b1117); } .ds-nav a { display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 12px; border-radius: 6px; font-size: 14px; color: var(--ui-ink-2, #a7b4c3); text-decoration: none; transition: background-color 120ms ease, color 120ms ease; } .ds-nav a svg { color: var(--ui-ink-3, #8290a0); } .ds-nav a:hover { background: var(--ui-surface, #111923); color: var(--ui-ink, #e4ebf3); } .ds-nav a[aria-current=\"page\"] { background: var(--ui-surface-2, #172230); color: var(--ui-ink, #e4ebf3); } .ds-nav a[aria-current=\"page\"] svg { color: var(--ui-accent, #7db4ff); } .ds-nav a:focus-visible { outline: 2px solid rgba(125, 180, 255, 0.7); outline-offset: 2px; }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "所有内容块的容器：细线外框、标题行、无投影。",
+      "html": "<section class=\"ds-panel\"><div class=\"ds-panel-head\"><h2>品种表现 TOP10</h2><p>收益率 = 该品种净盈亏 / 该品种总开仓价值</p></div><div class=\"ds-panel-body\"><span class=\"ds-figure ds-profit\">+$435.77</span></div></section>",
+      "css": ".ds-panel { min-width: 0; border: 1px solid var(--ui-line-strong, #293647); border-radius: 6px; background: var(--ui-surface, #111923); color: var(--ui-ink, #e4ebf3); } .ds-panel-head { padding: 14px 20px; border-bottom: 1px solid var(--ui-line, #1c2735); } .ds-panel-head h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 24px; } .ds-panel-head p { margin: 2px 0 0; font-size: 13px; line-height: 20px; color: var(--ui-ink-3, #8290a0); } .ds-panel-body { padding: 20px; } .ds-figure { font-size: 36px; font-weight: 600; line-height: 1; font-variant-numeric: lining-nums proportional-nums; } .ds-profit { color: var(--ui-profit, #3fbf8f); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "复盘工作台",
+    "overview": "这是一张盘后复盘用的工作台，不是行情终端也不是营销页。整张界面是青黑色的桌面，上面摆着蓝灰色的面板，数字是桌上最亮的东西。层级只靠面色深浅和 1px 细线表达，没有渐变、投影和光效；颜色只做两件事：盈亏（绿/红）和「当前选中/可点」（蓝）。密度取「总览优先、低密度」：第一屏先回答本期赚没赚、风险怎样，细节放到二级视图；数据表格则密一些，数字用表格数字对齐。",
+    "keyCharacteristics": [
+      "青黑底、蓝灰面板、一个蓝色强调色、一对盈亏色，再无其他色相。",
+      "大数字半粗比例数字，表格数字等宽对齐，不用等宽字体。",
+      "面板之间 16px 间距，面板内 20px 内边距，细线分区。",
+      "一种动效：120ms 的颜色过渡，加载用呼吸占位块，导航用 2px 进度条。",
+      "控件都是标准 web 控件，没有自造交互。"
+    ],
+    "rules": [
+      { "name": "The Two Jobs Rule", "body": "颜色只表达盈亏和当前选中。任何装饰性的用色都不允许。", "section": "colors" },
+      { "name": "The Opaque Tint Rule", "body": "盈亏底色一律用 color-mix 混进面板色得到不透明色，不用半透明叠加。", "section": "colors" },
+      { "name": "The No Eyebrow Rule", "body": "标题上方不放全大写小标签；标签文字不全大写、不加字距。", "section": "typography" },
+      { "name": "The Tabular Rule", "body": "任何会上下对齐比较的数字必须用 .ui-num；只有孤立的大数字用比例数字。", "section": "typography" },
+      { "name": "The Flat Desk Rule", "body": "任何元素的「浮起」都通过换一级面色或加 1px 线表达，禁止 box-shadow、backdrop-filter 和渐变。", "section": "elevation" }
+    ],
+    "dos": [
+      "Do 用 --ui-* 令牌和 Tailwind 色名，不写裸色值。",
+      "Do 给所有会对齐比较的数字加 .ui-num，大数字用 .ui-figure。",
+      "Do 用标准 web 控件和 .ui-button / .ui-field / .ui-select / .ui-segmented 这几套现成样式。",
+      "Do 数据取不到就显示 --，图表取不到行情就显示「无真实行情」。",
+      "Do 颜色过渡 120ms，prefers-reduced-motion 下归零。"
+    ],
+    "donts": [
+      "Don't 用渐变、投影、模糊、光效，或大于 1px 的彩色边框。",
+      "Don't 画模拟或随机行情；图表只用真实交易所数据。",
+      "Don't 用等宽字体，也不用 0 中间带点的字形。",
+      "Don't 加轴标题、重复金额、「无交易」占位这类冗余文字。",
+      "Don't 全大写标签、字距、标题上方的小眉题。",
+      "Don't 给颜色派第三个工作：除了盈亏和当前选中，其它都是中性色。"
+    ]
+  }
+}

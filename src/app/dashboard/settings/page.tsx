@@ -123,7 +123,7 @@ export default function SettingsPage() {
             <h3 className="text-[14px] font-medium text-ink">{text.newConnection}</h3>
             <div className="grid gap-1.5">
               <label htmlFor="exchange-platform" className="text-[12px] text-ink-3">{text.platform}</label>
-              <select id="exchange-platform" value={formData.name} onChange={(event) => setFormData((form) => ({ ...form, name: event.target.value as ExchangeName }))} className={fieldClass}>
+              <select id="exchange-platform" value={formData.name} onChange={(event) => setFormData((form) => ({ ...form, name: event.target.value as ExchangeName }))} className={`${fieldClass} ui-select`}>
                 <option value="bybit">Bybit</option>
                 <option value="binance">Binance</option>
                 <option value="hyperliquid">Hyperliquid</option>

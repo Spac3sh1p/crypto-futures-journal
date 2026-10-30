@@ -80,7 +80,7 @@ function TradePill({ trade, exchangeId, date, text }: { trade: MonthlyCalendarTr
       className="ui-link flex min-w-0 items-center gap-1.5 rounded-sm text-[12px] leading-5 no-underline hover:bg-surface-2"
       title={`${trade.side} ${trade.symbol} ${formatPnl(trade.pnl)}`}
     >
-      <span className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-[10px] font-medium ${isLong ? "bg-profit/14 text-profit" : "bg-loss/14 text-loss"}`}>
+      <span className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-[11px] font-medium ${isLong ? "bg-profit/14 text-profit" : "bg-loss/14 text-loss"}`}>
         {isLong ? text.long : text.short}
       </span>
       <span className="min-w-0 truncate text-ink-2">{trade.symbol.replace(/USDT$/, "")}</span>

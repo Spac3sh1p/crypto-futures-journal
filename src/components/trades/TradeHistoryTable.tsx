@@ -114,7 +114,7 @@ export function TradeHistoryTable({
     return pages;
   })();
 
-  const selectClass = "ui-field min-w-32 appearance-none pr-7 bg-[position:right_8px_center] bg-no-repeat";
+  const selectClass = "ui-field ui-select min-w-32";
   const filterFields = ([["symbol", symbols], ["side", ["Long", "Short"]], ["tag", tags]] as const);
 
   return (
