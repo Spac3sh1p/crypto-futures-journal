@@ -15,6 +15,10 @@ describe("buildNiceScale", () => {
     expect(scale.ticks.at(-1)).toBeGreaterThanOrEqual(97);
   });
 
+  it("gives an all-zero series a readable empty axis", () => {
+    expect(buildNiceScale([0, 0, 0])).toEqual({ domain: [0, 100], ticks: [0, 25, 50, 75, 100] });
+  });
+
   it("handles a flat or empty series without NaN", () => {
     expect(buildNiceScale([])).toEqual({ domain: [0, 1], ticks: [0, 1] });
     const flat = buildNiceScale([5, 5]);

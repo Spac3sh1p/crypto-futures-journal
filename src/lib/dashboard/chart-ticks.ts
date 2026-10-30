@@ -23,7 +23,8 @@ export function buildNiceScale(values: number[], targetTicks = 5, anchorZero = t
     max = Math.max(max, 0);
   }
   if (min === max) {
-    max = min + (Math.abs(min) || 1);
+    // 全为 0 时给一段空轴（$0 – $100），避免出现 $0 $0 $1 $1 这种刻度
+    max = min + (Math.abs(min) || 100);
   }
 
   const step = niceStep((max - min) / Math.max(1, targetTicks - 1));
