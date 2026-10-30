@@ -41,7 +41,7 @@ function formatMoneyTick(value: number): string {
 
 function BarTooltip({ active, payload, label, seriesName }: {
   active?: boolean;
-  payload?: Array<{ value?: number | string }>;
+  payload?: Array<{ value?: number | string; payload?: { tooltipLabel?: string } }>;
   label?: string | number;
   seriesName: string;
 }) {
@@ -50,7 +50,7 @@ function BarTooltip({ active, payload, label, seriesName }: {
   const tone = value >= 0 ? "var(--v2-profit)" : "var(--v2-loss)";
   return (
     <div className="rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-[12px] text-ink-3">
-      <div>{String(label)}</div>
+      <div className="v2-num">{payload?.[0]?.payload?.tooltipLabel ?? String(label)}</div>
       <div className="mt-1 flex items-center gap-2">
         <span className="inline-block h-2 w-2 rounded-sm" style={{ background: tone }} aria-hidden="true" />
         <span className="v2-num text-[13px] font-medium text-ink">{value >= 0 ? "+" : "-"}${Math.abs(value).toFixed(2)}</span>
@@ -61,8 +61,10 @@ function BarTooltip({ active, payload, label, seriesName }: {
 }
 
 export interface ResultBarItem extends DayTimeBar {
-  /** 显示用标签（已翻译）；缺省用 label */
+  /** 坐标轴与下钻链接上的短标签（已翻译）；缺省用 label */
   display?: string;
+  /** 提示框里的完整标签，例如 00:00–02:00；缺省用 display */
+  tooltipLabel?: string;
   /** 下钻到交易明细的链接，由服务端页面预先算好 */
   href: string;
 }
@@ -92,7 +94,8 @@ export function ResultBarChartV2({
               tick={{ fill: "var(--v2-ink-3)", fontSize: 11, fontFamily: AXIS_FONT }}
               axisLine={false}
               tickLine={false}
-              interval={0}
+              interval={chartData.length > 8 ? "equidistantPreserveStart" : 0}
+              minTickGap={6}
               dy={6}
             />
             <YAxis
@@ -121,10 +124,10 @@ export function ResultBarChartV2({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <nav aria-label={title} className="flex flex-wrap items-center gap-1 border-t border-line px-4 py-2">
-        <span className="mr-1 text-[12px] text-ink-3">{dictionary.tradeFilters.drillDown}</span>
+      <nav aria-label={title} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line px-4 py-2 text-[12px]">
+        <span className="text-ink-3">{dictionary.tradeFilters.drillDown}</span>
         {chartData.map((item) => (
-          <Link key={item.label} href={item.href} className="v2-button h-6 px-1.5 text-[11px] no-underline">
+          <Link key={item.label} href={item.href} className="v2-link v2-num text-ink-2 hover:text-ink">
             {item.display}
           </Link>
         ))}

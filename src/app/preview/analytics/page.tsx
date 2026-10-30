@@ -52,10 +52,18 @@ export default async function PreviewAnalyticsPage({ searchParams }: PageProps) 
     display: dictionary.analytics.days[item.label as keyof typeof dictionary.analytics.days] ?? item.label,
     href: toPreviewHref(buildTradeHistoryHref({ ...scope, entryDay: item.label })),
   }));
-  const resultByTime = buildTradeResultByTime(trades).map((item, index) => ({
-    ...item,
-    href: toPreviewHref(buildTradeHistoryHref({ ...scope, entrySlot: String(index * 2) })),
-  }));
+  const pad2 = (hour: number) => String(hour).padStart(2, "0");
+  const resultByTime = buildTradeResultByTime(trades).map((item, index) => {
+    const start = index * 2;
+    const end = start + 2;
+    return {
+      ...item,
+      // 坐标轴用「0–2时」，提示框用「00:00–02:00」，与交易明细的开仓时段筛选一致
+      display: locale === "zh" ? `${start}–${end}时` : `${start}–${end}h`,
+      tooltipLabel: `${pad2(start)}:00–${pad2(end)}:00`,
+      href: toPreviewHref(buildTradeHistoryHref({ ...scope, entrySlot: String(start) })),
+    };
+  });
   const durationReport = buildDurationReport(trades);
   const sizeReport = buildSizeReport(trades);
   const symbolsReport = buildSymbolsReport(trades);
