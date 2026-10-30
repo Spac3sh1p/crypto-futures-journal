@@ -10,7 +10,6 @@ import {
   calculateAnnualizedSharpeRatio,
 } from "@/lib/dashboard/transforms";
 import { buildSymbolTop10Report } from "@/lib/dashboard/analytics-transforms";
-import { getWalletBalance } from "@/lib/exchange/balance";
 import type { TradeRange } from "@/lib/formatters";
 import type { SerializedTrade } from "@/lib/dashboard/serialized-trade";
 
@@ -50,15 +49,13 @@ export function formatBalance(value: number): string {
   return `${prefix}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-/** 总览页共用的数据装配：正式页面与 /preview 读同一份结果，保证数字一致。 */
+/** 总览页的数据装配。余额不在这里取：由 WalletBalance 组件在 Suspense 里单独流式加载，页面不必等交易所往返。 */
 export async function loadOverviewModel(range: TradeRange, exchangeId?: string) {
-  const [trades, accountFlows, walletBalance] = await Promise.all([
+  const [trades, accountFlows] = await Promise.all([
     getTradesInRange(range, exchangeId),
     getAccountFlowsForCurve(exchangeId),
-    getWalletBalance(exchangeId),
   ]);
   const metrics = calculateMetrics(trades);
-  const balanceValue = walletBalance.total === null ? "--" : formatBalance(walletBalance.total);
 
   const rangeStart = getRangeStartDate(range);
   const curve: CurvePoint[] = buildCumulativePnlSeries(trades);
@@ -81,7 +78,6 @@ export async function loadOverviewModel(range: TradeRange, exchangeId?: string) 
   return {
     trades,
     metrics,
-    balanceValue,
     curve,
     flowPoints,
     sharpeRatio,

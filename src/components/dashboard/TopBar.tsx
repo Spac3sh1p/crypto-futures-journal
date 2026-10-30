@@ -5,6 +5,7 @@ import { useTradeNavigation } from "@/components/dashboard/TradeNavigationGuard"
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { normalizeMonthParam } from "@/lib/dashboard/calendar-transforms";
 import { LanguageToggle } from "@/components/i18n/LanguageToggle";
+import { refreshWalletBalance } from "@/app/dashboard/actions";
 
 const RANGES = ["7d", "30d", "90d", "all"] as const;
 
@@ -70,8 +71,13 @@ export function TopBar() {
     router.push(`?${params.toString()}`);
   }
 
-  function handleRefresh() {
+  async function handleRefresh() {
     if (!requestNavigation()) return;
+    try {
+      await refreshWalletBalance();
+    } catch {
+      // 清缓存失败不影响刷新本身
+    }
     router.refresh();
   }
 

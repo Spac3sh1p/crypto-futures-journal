@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { template } from "@/lib/i18n";
 import type { CurvePoint } from "@/lib/dashboard/overview-model";
@@ -19,7 +19,7 @@ export function PerformancePanel({
   headlineValue,
   headlineTone,
   balanceLabel,
-  balanceValue,
+  balance,
   stats,
   trades,
   flows,
@@ -30,7 +30,8 @@ export function PerformancePanel({
   headlineValue: string;
   headlineTone: "profit" | "loss";
   balanceLabel: string;
-  balanceValue: string;
+  /** 余额数字；服务端用 Suspense 包着传进来，会比面板其余部分晚到 */
+  balance: ReactNode;
   stats: OverviewStat[];
   trades: CurvePoint[];
   flows: CurvePoint[];
@@ -57,7 +58,7 @@ export function PerformancePanel({
         </div>
         <div className="text-right">
           <div className="text-[12px] text-ink-3">{balanceLabel}</div>
-          <div className="ui-num mt-1 text-[15px] text-ink">{balanceValue}</div>
+          <div className="ui-num mt-1 text-[15px] text-ink">{balance}</div>
         </div>
       </div>
 

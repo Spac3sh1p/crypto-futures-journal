@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 const BALANCE_TIMEOUT_MS = 4000;
 const BALANCE_ASSET = "USDT";
+const BALANCE_CACHE_TTL_MS = 60_000;
+const BALANCE_FAILURE_TTL_MS = 15_000;
 
 interface ExchangeCredentialRecord {
   id: string;
@@ -126,8 +128,31 @@ async function withTimeout<T>(work: Promise<T>): Promise<T> {
   }
 }
 
-async function fetchExchangeUsdtBalance(exchange: ExchangeCredentialRecord): Promise<number | null> {
-  const ExchangeClass = (ccxt as unknown as Record<string, new (config: object) => { fetchBalance(params?: object): Promise<unknown> }>)[exchange.name];
+type BalanceClient = { fetchBalance(params?: object): Promise<unknown> };
+type BalanceClientConstructor = new (config: object) => BalanceClient;
+
+interface CachedBalance {
+  value: number | null;
+  expiresAt: number;
+}
+
+// 客户端与余额缓存挂在 globalThis 上：和 prisma 单例一样躲过开发模式的模块热替换。
+// ccxt 实例的首次请求会拉取整个交易所的合约列表（Binance/Bybit 各约 1.4 秒），复用实例后只付一次。
+const globalForBalance = globalThis as unknown as {
+  walletBalanceClients?: Map<string, BalanceClient>;
+  walletBalanceCache?: Map<string, CachedBalance>;
+  walletBalanceInflight?: Map<string, Promise<number | null>>;
+};
+const balanceClients = (globalForBalance.walletBalanceClients ??= new Map());
+const balanceCache = (globalForBalance.walletBalanceCache ??= new Map());
+const balanceInflight = (globalForBalance.walletBalanceInflight ??= new Map());
+
+function getBalanceClient(exchange: ExchangeCredentialRecord): BalanceClient | null {
+  const clientKey = `${exchange.id}:${exchange.apiKey}`;
+  const existing = balanceClients.get(clientKey);
+  if (existing) return existing;
+
+  const ExchangeClass = (ccxt as unknown as Record<string, BalanceClientConstructor | undefined>)[exchange.name];
   if (!ExchangeClass) return null;
 
   let apiSecret: string;
@@ -142,6 +167,13 @@ async function fetchExchangeUsdtBalance(exchange: ExchangeCredentialRecord): Pro
     secret: apiSecret,
     options: clientOptionsFor(exchange.name),
   });
+  balanceClients.set(clientKey, client);
+  return client;
+}
+
+async function fetchExchangeUsdtBalance(exchange: ExchangeCredentialRecord): Promise<number | null> {
+  const client = getBalanceClient(exchange);
+  if (!client) return null;
 
   for (const params of balanceParamCandidatesFor(exchange.name)) {
     try {
@@ -154,6 +186,39 @@ async function fetchExchangeUsdtBalance(exchange: ExchangeCredentialRecord): Pro
   }
 
   return null;
+}
+
+/** 同一交易所 60 秒内复用上次结果；取不到时只缓存 15 秒，网络恢复后能尽快重试。并发的渲染共用同一次请求。 */
+function getExchangeUsdtBalance(exchange: ExchangeCredentialRecord): Promise<number | null> {
+  const cached = balanceCache.get(exchange.id);
+  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.value);
+
+  const inflight = balanceInflight.get(exchange.id);
+  if (inflight) return inflight;
+
+  const request = fetchExchangeUsdtBalance(exchange)
+    .then((value) => {
+      const ttl = value === null ? BALANCE_FAILURE_TTL_MS : BALANCE_CACHE_TTL_MS;
+      balanceCache.set(exchange.id, { value, expiresAt: Date.now() + ttl });
+      return value;
+    })
+    .finally(() => {
+      balanceInflight.delete(exchange.id);
+    });
+  balanceInflight.set(exchange.id, request);
+  return request;
+}
+
+/** 顶栏「刷新」调用：丢掉缓存的余额，下一次渲染重新向交易所请求；ccxt 实例保留。 */
+export function invalidateWalletBalanceCache(): void {
+  balanceCache.clear();
+}
+
+/** 仅供测试：清空客户端、余额缓存与进行中的请求。 */
+export function resetWalletBalanceState(): void {
+  balanceClients.clear();
+  balanceCache.clear();
+  balanceInflight.clear();
 }
 
 export async function getWalletBalance(exchangeId?: string): Promise<WalletBalanceSummary> {
@@ -172,7 +237,7 @@ export async function getWalletBalance(exchangeId?: string): Promise<WalletBalan
 
   if (exchanges.length === 0) return { asset: BALANCE_ASSET, total: null };
 
-  const balances = await Promise.all(exchanges.map(fetchExchangeUsdtBalance));
+  const balances = await Promise.all(exchanges.map(getExchangeUsdtBalance));
   const validBalances = balances.filter((balance): balance is number => balance !== null);
 
   if (validBalances.length === 0) return { asset: BALANCE_ASSET, total: null };

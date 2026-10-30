@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { formatMoney, parseRange } from "@/lib/formatters";
 import { getServerDictionary } from "@/lib/i18n-server";
 import { template } from "@/lib/i18n";
@@ -7,6 +8,7 @@ import { PerformancePanel, type OverviewStat } from "./PerformancePanel";
 import { PeriodReviewPanel } from "./PeriodReviewPanel";
 import { RecentTrades } from "@/components/overview/RecentTrades";
 import { SymbolTop10Table } from "./SymbolTop10Table";
+import { WalletBalance, WalletBalanceFallback } from "./WalletBalance";
 
 export async function OverviewDashboard({ params }: { params: { range?: string; exchangeId?: string } }) {
   const range = parseRange(params.range);
@@ -49,7 +51,11 @@ export async function OverviewDashboard({ params }: { params: { range?: string; 
         headlineValue={formatMoney(metrics.totalPnl)}
         headlineTone={metrics.totalPnl >= 0 ? "profit" : "loss"}
         balanceLabel={dictionary.shell.balance}
-        balanceValue={model.balanceValue}
+        balance={
+          <Suspense fallback={<WalletBalanceFallback />}>
+            <WalletBalance exchangeId={exchangeId} />
+          </Suspense>
+        }
         stats={stats}
         trades={model.curve}
         flows={model.flowPoints}
