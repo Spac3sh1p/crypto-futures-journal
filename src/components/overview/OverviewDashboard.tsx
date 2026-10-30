@@ -1,27 +1,11 @@
-import { calculateMetrics } from "@/lib/analysis";
-import {
-  getAccountFlowsForCurve,
-  getRangeStartDate,
-  getTradesInRange,
-} from "@/lib/dashboard/queries";
-import {
-  buildAccountFlowPnlSeries,
-  buildCumulativePnlSeries,
-  calculateAnnualizedSharpeRatio,
-} from "@/lib/dashboard/transforms";
-import { buildSymbolTop10Report } from "@/lib/dashboard/analytics-transforms";
-import {
-  formatMoney,
-  parseRange,
-} from "@/lib/formatters";
-import { getWalletBalance } from "@/lib/exchange/balance";
+import { formatMoney, parseRange } from "@/lib/formatters";
 import { getServerDictionary } from "@/lib/i18n-server";
+import { loadOverviewModel } from "@/lib/dashboard/overview-model";
 import { OverviewPerformanceChart } from "@/components/overview/OverviewPerformanceChart";
 import { AccountingNotice } from "@/components/dashboard/AccountingNotice";
 import { OverviewRecentTrades } from "@/components/overview/OverviewRecentTrades";
 import { PeriodReviewPanel } from "@/components/overview/PeriodReviewPanel";
 import { SymbolTop10Table } from "@/components/overview/SymbolTop10Table";
-import type { SerializedTrade } from "@/components/dashboard/TradeHistoryTable";
 
 interface OverviewDashboardParams {
   range?: string;
@@ -30,34 +14,6 @@ interface OverviewDashboardParams {
 
 interface OverviewDashboardProps {
   params: OverviewDashboardParams;
-}
-
-function serializeTrade(trade: Awaited<ReturnType<typeof getTradesInRange>>[number]): SerializedTrade {
-  return {
-    id: trade.id,
-    accountingStatus: trade.accountingStatus,
-    exchangeName: trade.exchange.name,
-    symbol: trade.symbol,
-    side: trade.side,
-    leverage: trade.leverage,
-    entryPrice: trade.entryPrice,
-    exitPrice: trade.exitPrice,
-    realizedPnl: trade.realizedPnl,
-    fee: trade.fee,
-    fundingFee: trade.fundingFee,
-    holdDuration: trade.holdDuration,
-    entryTime: trade.entryTime.toISOString(),
-    exitTime: trade.exitTime.toISOString(),
-    tags: trade.tags,
-    notes: trade.notes,
-    entryQty: trade.entryQty,
-    entryValue: trade.entryValue,
-  };
-}
-
-function formatBalance(value: number): string {
-  const prefix = value < 0 ? "-$" : "$";
-  return `${prefix}${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function KpiTile({
@@ -89,29 +45,18 @@ export async function OverviewDashboard({
   const dictionary = await getServerDictionary();
   const text = dictionary.overview;
 
-  const [trades, accountFlows, walletBalance] = await Promise.all([
-    getTradesInRange(range, exchangeId),
-    getAccountFlowsForCurve(exchangeId),
-    getWalletBalance(exchangeId),
-  ]);
-  const metrics = calculateMetrics(trades);
-  const balanceValue = walletBalance.total === null
-    ? "--"
-    : formatBalance(walletBalance.total);
-
-  const rangeStart = getRangeStartDate(range);
-  const curve = buildCumulativePnlSeries(trades);
-  const flowCurve = buildAccountFlowPnlSeries(accountFlows, rangeStart);
-  const sharpeRatio = flowCurve.length && flowCurve.every((point) => point.netDeposits > 0)
-    ? calculateAnnualizedSharpeRatio(flowCurve) : null;
-  const flowAccounts = [...new Map(accountFlows.filter((flow) => flow.asset === "USDT")
-    .map((flow) => [flow.exchangeId, flow.exchange.label ? `${flow.exchange.name} · ${flow.exchange.label}` : flow.exchange.name])).values()];
+  const {
+    trades,
+    metrics,
+    balanceValue,
+    curve,
+    flowPoints,
+    sharpeRatio,
+    flowAccounts,
+    recentTrades,
+    symbolTop10,
+  } = await loadOverviewModel(range, exchangeId);
   const scope = { range, exchangeId };
-  const recentTrades = [...trades]
-    .sort((a, b) => b.exitTime.getTime() - a.exitTime.getTime())
-    .slice(0, 6)
-    .map(serializeTrade);
-  const symbolTop10 = buildSymbolTop10Report(trades);
 
   return (
     <div className="space-y-4">
@@ -145,7 +90,7 @@ export async function OverviewDashboard({
         <span>{dictionary.common.win} {metrics.winCount} / {dictionary.common.loss} {metrics.lossCount}</span>
       </div>
       <AccountingNotice trades={trades} text={dictionary.accounting} />
-      <OverviewPerformanceChart trades={curve} flows={flowCurve.map((point) => ({ ...point, returnPct: point.netDeposits > 0 ? point.returnPct : undefined }))} accounts={flowAccounts} sharpe={sharpeRatio} />
+      <OverviewPerformanceChart trades={curve} flows={flowPoints} accounts={flowAccounts} sharpe={sharpeRatio} />
 
       <section className="grid grid-cols-1 items-start gap-4 min-[1440px]:grid-cols-2">
         <SymbolTop10Table data={symbolTop10} text={text.symbolTop10} scope={scope} />
