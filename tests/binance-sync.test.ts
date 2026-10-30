@@ -374,6 +374,8 @@ describe("fetchBinanceAccountFlows", () => {
   });
 
   it("maps Binance income history into account flows including transfers and trading income", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-31T00:00:00Z"));
     const since = new Date("2026-05-01T00:00:00Z");
     mockCcxt.fapiPrivateGetIncome.mockResolvedValue([
       {
@@ -480,5 +482,65 @@ describe("fetchBinanceAccountFlows", () => {
         89 * 24 * 60 * 60 * 1000
       );
     }
+  });
+});
+
+describe("Binance position modes", () => {
+  const since = new Date("2026-05-01T00:00:00Z");
+  function fill(id: string, side: string, price: number, amount: number, pnl: number, positionSide = "BOTH", orderId = id) {
+    return { id, symbol: "BTC/USDT:USDT", timestamp: since.getTime() + Number(id) * 1000,
+      price, amount, side, takerOrMaker: "taker", fee: { cost: amount }, info: { orderId, positionSide, realizedPnl: String(pnl) } };
+  }
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const market = { id: "BTCUSDT", symbol: "BTC/USDT:USDT", linear: true, swap: true, quote: "USDT" };
+    mockCcxt.exchange.markets_by_id = { BTCUSDT: market };
+    mockCcxt.loadMarkets.mockResolvedValue({ "BTC/USDT:USDT": market });
+    mockCcxt.fapiPrivateGetIncome.mockResolvedValue([{ symbol: "BTCUSDT", incomeType: "REALIZED_PNL" }]);
+  });
+  const fetch = () => fetchBinanceTrades({ apiKey: "key", apiSecret: "secret", exchange: "binance" }, since);
+
+  it("keeps simultaneous long and short positions separate", async () => {
+    mockCcxt.fetchMyTrades.mockResolvedValue([
+      fill("1", "buy", 100, 1, 0, "LONG"), fill("2", "sell", 105, 1, 0, "SHORT"),
+      fill("3", "sell", 110, 1, 10, "LONG"), fill("4", "buy", 100, 1, 5, "SHORT"),
+    ]);
+    const trades = await fetch();
+    expect(trades.map(t => [t.side, t.realizedPnl])).toEqual([["Long", 10], ["Short", 5]]);
+    expect(trades.map(t => t.fee)).toEqual([2, 2]);
+  });
+
+  it("replays reversing order fills without averaging the opening and closing prices", async () => {
+    mockCcxt.fetchMyTrades.mockResolvedValue([
+      fill("1", "buy", 100, 1, 0), fill("2", "sell", 110, 1, 10, "BOTH", "reverse"),
+      fill("3", "sell", 111, 2, 0, "BOTH", "reverse"), fill("4", "buy", 105, 2, 12),
+    ]);
+    const trades = await fetch();
+    expect(trades.map(t => [t.side, t.entryPrice, t.exitPrice, t.realizedPnl, t.fee])).toEqual([
+      ["Long", 100, 110, 10, 2], ["Short", 111, 105, 12, 4],
+    ]);
+  });
+
+  it("allocates a single reversing fill's full realized PnL to the closing position", async () => {
+    mockCcxt.fetchMyTrades.mockResolvedValue([
+      fill("1", "buy", 100, 1, 0), fill("2", "sell", 110, 3, 10), fill("3", "buy", 105, 2, 10),
+    ]);
+    const trades = await fetch();
+    expect(trades.map(t => [t.realizedPnl, t.fee])).toEqual([[10, 2], [10, 4]]);
+  });
+
+  it("does not turn an orphan hedge close into an opening position", async () => {
+    mockCcxt.fetchMyTrades.mockResolvedValue([fill("1", "sell", 110, 1, 0, "LONG"), fill("2", "buy", 100, 1, 0, "LONG")]);
+    expect(await fetch()).toEqual([]);
+  });
+  it("does not report a complete hedge position when opening history is missing", async () => {
+    mockCcxt.fetchMyTrades.mockResolvedValue([fill("1", "buy", 100, 1, 0, "LONG"), fill("2", "sell", 110, 2, 20, "LONG")]);
+    expect(await fetch()).toEqual([]);
+  });
+  it("rejects non-USDT fee amounts before importing trades", async () => {
+    mockCcxt.fetchMyTrades.mockResolvedValue([
+      { ...fill("1", "buy", 100, 1, 0), fee: { cost: 0.01, currency: "BNB" } }, fill("2", "sell", 110, 1, 10),
+    ]);
+    await expect(fetch()).rejects.toThrow("fee currency BNB cannot be accounted as USDT");
   });
 });

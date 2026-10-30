@@ -31,7 +31,7 @@ interface BinanceFill {
   amount?: number;
   side?: string;
   takerOrMaker?: string;
-  fee?: { cost?: number };
+  fee?: { cost?: number; currency?: string };
   info?: Record<string, unknown>;
 }
 
@@ -50,8 +50,10 @@ interface BinanceExchangeClient {
 type UsdtLinearSwapMarket = BinanceMarket & { symbol: string };
 type TradeSide = "Long" | "Short";
 type OrderSide = "buy" | "sell";
+type PositionSide = "BOTH" | "LONG" | "SHORT";
 
 interface BinanceOrderGroup {
+  positionSide: PositionSide;
   externalId: string;
   orderKey: string;
   symbol: string;
@@ -308,7 +310,8 @@ function addClosingOrder(position: BinancePosition, order: BinanceOrderGroup): n
   position.exitQty += closeQty;
   position.exitValue += order.value * ratio;
   position.remainingQty -= closeQty;
-  position.realizedPnl += order.realizedPnl * ratio;
+  // The exchange's realized PnL already belongs entirely to the closing quantity.
+  position.realizedPnl += order.realizedPnl;
   position.fee += order.fee * ratio;
   position.makerFee += order.makerFee * ratio;
   position.takerFee += order.takerFee * ratio;
@@ -318,15 +321,24 @@ function addClosingOrder(position: BinancePosition, order: BinanceOrderGroup): n
   return order.quantity - closeQty;
 }
 
-function buildBinanceOrderGroups(fills: BinanceFill[]): BinanceOrderGroup[] {
-  const groups = new Map<string, BinanceOrderGroup>();
+function buildBinanceFillOrders(fills: BinanceFill[]): BinanceOrderGroup[] {
+  const orders: BinanceOrderGroup[] = [];
 
-  for (const fill of fills) {
+  // Replay executions, not whole orders: a reversing order can close at one price
+  // and open the other direction at another price in its later executions.
+  const sortedFills = [...fills].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0) || compareFillIds(a.id, b.id));
+  for (const fill of sortedFills) {
     const symbol = normalizedFillSymbol(fill);
     const baseCoin = symbol.replace("USDT", "");
     const orderKey = orderKeyForFill(fill);
-    const groupKey = `${symbol}:${orderKey}`;
+    const rawPositionSide = String(fill.info?.positionSide ?? "BOTH").toUpperCase();
+    const positionSide: PositionSide = rawPositionSide === "LONG" || rawPositionSide === "SHORT"
+      ? rawPositionSide : "BOTH";
     const feeCost = fill.fee?.cost || 0;
+    const feeCurrency = String(fill.fee?.currency ?? fill.info?.commissionAsset ?? "USDT").toUpperCase();
+    if (feeCost !== 0 && feeCurrency !== "USDT") {
+      throw new Error(`Binance ${symbol}: fee currency ${feeCurrency} cannot be accounted as USDT. No trades were imported; fee conversion is required.`);
+    }
     const isMaker = fill.takerOrMaker === "maker";
     const fillTime = new Date(fill.timestamp || Date.now());
     const fillPrice = fill.price || 0;
@@ -334,20 +346,8 @@ function buildBinanceOrderGroups(fills: BinanceFill[]): BinanceOrderGroup[] {
     const fillValue = fillPrice * fillQty;
     const pnl = Number(fill.info?.realizedPnl) || 0;
 
-    const existing = groups.get(groupKey);
-    if (existing) {
-      existing.quantity += fillQty;
-      existing.value += fillValue;
-      existing.realizedPnl += pnl;
-      existing.fee += feeCost;
-      existing.makerFee += isMaker ? feeCost : 0;
-      existing.takerFee += isMaker ? 0 : feeCost;
-      if (fillTime < existing.firstTime) existing.firstTime = fillTime;
-      if (fillTime > existing.lastTime) existing.lastTime = fillTime;
-      continue;
-    }
-
-    groups.set(groupKey, {
+    orders.push({
+      positionSide,
       externalId: `binance_order_${symbol}_${orderKey}`,
       orderKey,
       symbol,
@@ -364,8 +364,16 @@ function buildBinanceOrderGroups(fills: BinanceFill[]): BinanceOrderGroup[] {
     });
   }
 
-  return Array.from(groups.values())
-    .sort((a, b) => a.firstTime.getTime() - b.firstTime.getTime() || a.externalId.localeCompare(b.externalId));
+  return orders;
+}
+
+function compareFillIds(a = "", b = ""): number {
+  if (/^\d+$/.test(a) && /^\d+$/.test(b)) {
+    const left = BigInt(a);
+    const right = BigInt(b);
+    return left < right ? -1 : left > right ? 1 : 0;
+  }
+  return a.localeCompare(b);
 }
 
 function leftoverOpeningOrder(order: BinanceOrderGroup, quantity: number): BinanceOrderGroup | null {
@@ -384,33 +392,42 @@ function leftoverOpeningOrder(order: BinanceOrderGroup, quantity: number): Binan
 }
 
 function aggregateBinancePositionFills(fills: BinanceFill[]): RawTrade[] {
-  const orders = buildBinanceOrderGroups(fills);
+  const orders = buildBinanceFillOrders(fills);
   const positions = new Map<string, BinancePosition>();
   const completed: RawTrade[] = [];
 
   for (const order of orders) {
-    const current = positions.get(order.symbol);
+    const positionKey = `${order.symbol}:${order.positionSide}`;
+    const current = positions.get(positionKey);
+    const isHedgeOpening = order.positionSide === "LONG"
+      ? order.orderSide === "buy"
+      : order.orderSide === "sell";
 
     if (!current) {
-      if (order.realizedPnl === 0) {
-        positions.set(order.symbol, openPositionFromOrder(order));
+      if (order.positionSide !== "BOTH" ? isHedgeOpening : order.realizedPnl === 0) {
+        positions.set(positionKey, openPositionFromOrder(order));
       }
       continue;
     }
 
-    if (tradeSideFromOpeningOrder(order.orderSide) === current.side) {
+    if (order.positionSide !== "BOTH" ? isHedgeOpening : tradeSideFromOpeningOrder(order.orderSide) === current.side) {
       addOpeningOrder(current, order);
       continue;
     }
 
+    if (order.positionSide !== "BOTH" && order.quantity > current.remainingQty + POSITION_QTY_EPSILON) {
+      // A hedge close cannot reverse. More closed quantity proves missing opening history.
+      positions.delete(positionKey);
+      continue;
+    }
     const leftoverQty = addClosingOrder(current, order);
     if (current.remainingQty <= POSITION_QTY_EPSILON) {
       completed.push(rawTradeFromClosedPosition(current));
-      positions.delete(order.symbol);
+      positions.delete(positionKey);
 
       const leftover = leftoverOpeningOrder(order, leftoverQty);
-      if (leftover) {
-        positions.set(order.symbol, openPositionFromOrder(leftover));
+      if (leftover && order.positionSide === "BOTH") {
+        positions.set(positionKey, openPositionFromOrder(leftover));
       }
     }
   }
@@ -422,8 +439,8 @@ function aggregateBinancePositionFills(fills: BinanceFill[]): RawTrade[] {
 /**
  * Fetch individual fills from Binance Futures and reconstruct closed positions.
  * Binance can split one position across many execution fills and multiple
- * partial-close orders, so fills are first grouped by order and then replayed
- * chronologically until the position quantity returns to zero.
+ * partial-close orders, so executions are replayed chronologically until
+ * the position quantity returns to zero.
  */
 export async function fetchBinanceTrades(
   credentials: ExchangeCredentials,
