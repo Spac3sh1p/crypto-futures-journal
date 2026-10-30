@@ -4,9 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTradeNavigation } from "@/components/dashboard/TradeNavigationGuard";
 import { useI18n } from "@/components/i18n/LanguageProvider";
 import { normalizeMonthParam } from "@/lib/dashboard/calendar-transforms";
-import type { PreviewPalette } from "@/lib/dashboard/preview-routing";
 import { LanguageToggleV2 } from "./LanguageToggleV2";
-import { PaletteToggle } from "./PaletteToggle";
 
 const RANGES = ["7d", "30d", "90d", "all"] as const;
 
@@ -33,7 +31,7 @@ function rangeSpan(activeRange: string): string | null {
   return `${formatDate(start)} – ${formatDate(end)}`;
 }
 
-export function TopBarV2({ palette }: { palette: PreviewPalette }) {
+export function TopBarV2() {
   const { dictionary, locale } = useI18n();
   const router = useRouter();
   const { requestNavigation } = useTradeNavigation();
@@ -123,7 +121,6 @@ export function TopBarV2({ palette }: { palette: PreviewPalette }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <PaletteToggle palette={palette} />
         <LanguageToggleV2 />
         <button type="button" aria-label={dictionary.topBar.refreshAria} onClick={handleRefresh} className="v2-button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">

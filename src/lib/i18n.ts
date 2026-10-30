@@ -426,9 +426,6 @@ export const dictionaries = {
     preview: {
       badge: "新版预览",
       backToCurrent: "回到当前版本",
-      palette: "配色",
-      paletteInk: "墨",
-      paletteSlate: "青",
       dataSource: "数据源",
       allExchanges: "全部交易所",
       noExchange: "尚未连接交易所",
@@ -852,9 +849,6 @@ export const dictionaries = {
     preview: {
       badge: "Preview",
       backToCurrent: "Open current UI",
-      palette: "Palette",
-      paletteInk: "Ink",
-      paletteSlate: "Slate",
       dataSource: "Data source",
       allExchanges: "All exchanges",
       noExchange: "No exchange connected",

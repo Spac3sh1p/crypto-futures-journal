@@ -65,6 +65,7 @@ interface KlinePalette {
   chipClass: string;
   placeholderClass: string;
   frameClass: string;
+  textClass: string;
 }
 
 // classic = 正式页面现用配色；v2 = /preview 读取 CSS 变量，随配色切换。
@@ -87,6 +88,7 @@ const KLINE_PALETTES: Record<MiniKlineVariant, KlinePalette> = {
     chipClass: "rounded-md bg-[#121b2b] px-2 py-1 font-mono text-[10px] font-semibold text-text-secondary ring-1 ring-[#27364b]",
     placeholderClass: "rounded-lg border border-[#263448] bg-[#0b111d]",
     frameClass: "rounded-lg border border-[#263448]",
+    textClass: "font-mono",
   },
   v2: {
     up: "var(--v2-profit)",
@@ -106,6 +108,7 @@ const KLINE_PALETTES: Record<MiniKlineVariant, KlinePalette> = {
     chipClass: "v2-num rounded-sm bg-surface-2 px-2 py-1 text-[11px] text-ink-2",
     placeholderClass: "rounded-md border border-line-strong bg-canvas",
     frameClass: "rounded-md border border-line-strong",
+    textClass: "v2-num",
   },
 };
 
@@ -169,7 +172,7 @@ function MarkerShape({
         y={bubbleY + 12.5}
         textAnchor="middle"
         fill={palette.markerText}
-        className="font-mono text-[10px] font-bold"
+        className={`${palette.textClass} text-[10px] font-bold`}
       >
         {label}
       </text>
@@ -367,7 +370,7 @@ export function MiniKlineChart({
   return (
     <div className="relative">
       <div className={`mb-2 flex flex-wrap items-center gap-2 px-3 py-2 ${palette.headerClass}`}>
-        <span className="font-mono text-xs font-semibold text-text-primary">
+        <span className={`${palette.textClass} text-xs font-semibold text-text-primary`}>
           {symbol}
         </span>
         <span className="text-xs font-medium text-text-muted">/</span>
@@ -498,7 +501,7 @@ export function MiniKlineChart({
                   y={chart.yForPrice(tick) + 3}
                   textAnchor="start"
                   fill={palette.axisText}
-                  className="font-mono text-[10px] font-medium"
+                  className={`${palette.textClass} text-[10px] font-medium`}
                 >
                   {formatChartPrice(tick)}
                 </text>
@@ -578,7 +581,7 @@ export function MiniKlineChart({
               y={clamp(chart.yForPrice(chart.lastClose) + 3.5, PLOT_TOP + 11, CHART_HEIGHT - PLOT_BOTTOM - 4)}
               textAnchor="middle"
               fill={palette.lastPriceText}
-              className="font-mono text-[10px] font-semibold"
+              className={`${palette.textClass} text-[10px] font-semibold`}
             >
               {formatChartPrice(chart.lastClose)}
             </text>

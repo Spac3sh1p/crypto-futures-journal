@@ -16,7 +16,7 @@ import { buildNiceScale } from "@/lib/dashboard/chart-ticks";
 import type { CurvePoint } from "@/lib/dashboard/overview-model";
 
 const CHART_HEIGHT = 272;
-const AXIS_FONT = "var(--font-mono)";
+const AXIS_FONT = "var(--v2-font-sans)";
 
 function formatAxisDate(date: string): string {
   const [, month, day] = date.split("-");

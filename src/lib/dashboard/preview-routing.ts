@@ -1,11 +1,3 @@
-export const PREVIEW_PALETTE_COOKIE = "cfj_palette";
-export const PREVIEW_PALETTES = ["ink", "slate"] as const;
-export type PreviewPalette = (typeof PREVIEW_PALETTES)[number];
-
-export function normalizePalette(value: unknown): PreviewPalette {
-  return PREVIEW_PALETTES.includes(value as PreviewPalette) ? (value as PreviewPalette) : "ink";
-}
-
 const DASHBOARD_PREFIX = "/dashboard";
 const PREVIEW_PREFIX = "/preview";
 
